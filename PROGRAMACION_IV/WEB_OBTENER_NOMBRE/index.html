@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Notas Pro - Amicha Edition</title>
+    <style>
+        :root {
+            --turquesa: #00ced1;
+            --turquesa-oscuro: #008b8b;
+            --turquesa-claro: #e0ffff;
+            --blanco: #ffffff;
+            --fondo: #f4fbfb;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background-color: var(--fondo);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            background: var(--blanco);
+            width: 100%;
+            max-width: 600px;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.05);
+            border-top: 10px solid var(--turquesa);
+        }
+
+        h2 { color: var(--turquesa-oscuro); text-align: center; margin-bottom: 20px; }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group { display: flex; flex-direction: column; }
+        .full-width { grid-column: span 2; }
+        
+        label { margin-bottom: 5px; font-weight: 600; color: #444; font-size: 0.85em; }
+        
+        input {
+            padding: 10px;
+            border: 2px solid #eee;
+            border-radius: 8px;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus { border-color: var(--turquesa); }
+
+        button.btn-main {
+            width: 100%;
+            background: var(--turquesa);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 25px;
+        }
+
+        th { background: var(--turquesa-claro); color: var(--turquesa-oscuro); padding: 12px; font-size: 0.85em; }
+        td { padding: 12px; text-align: center; border-bottom: 1px solid #eee; }
+
+        .fila-alumno { cursor: pointer; transition: 0.2s; }
+        .fila-alumno:hover { background-color: #f0ffff; }
+        .fila-activa { background-color: var(--turquesa-claro) !important; }
+
+        /* Panel Detallado */
+        #statsPanel {
+            display: none;
+            margin-top: 20px;
+            width: 100%;
+            max-width: 600px;
+            background: var(--blanco);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid var(--turquesa);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .materia-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px;
+            border-bottom: 1px solid #f9f9f9;
+        }
+
+        .recuperar-btn {
+            background: #f39c12;
+            color: white;
+            border: none;
+            padding: 6px 12px; /* Más espacio para que se vea bien */
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8em;
+            margin-left: 10px;
+            font-weight: bold;
+        }
+
+        .stats-resumen {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 2px dashed var(--turquesa-claro);
+            text-align: center;
+        }
+
+        .stat-box span { display: block; font-size: 20px; font-weight: bold; }
+        
+        /* Promedio centrado y destacado */
+        .promedio-central {
+            grid-column: span 2;
+            background: #fff;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--turquesa-claro);
+            margin-top: 10px;
+        }
+        
+        .destacado { 
+            color: var(--turquesa-oscuro); 
+            grid-column: span 2; 
+            background: var(--turquesa-claro); 
+            padding: 10px; 
+            border-radius: 10px; 
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Registro de Mis Alumnas/os 🎓</h2>
+        
+        <div class="form-grid">
+            <div class="form-group full-width"><label>Nombre del Estudiante</label><input type="text" id="nombre"></div>
+            <div class="form-group"><label>Materia</label><input type="text" id="materia"></div>
+            <div class="form-group"><label>Curso</label><input type="text" id="curso"></div>
+            <div class="form-group full-width"><label>Nota (Se aprueba con 7)</label><input type="number" id="nota" min="0" max="10" step="0.1"></div>
+        </div>
+
+        <button class="btn-main" onclick="registrar()">Cargar Nota</button>
+
+        <table>
+            <thead><tr><th>Estudiante</th><th>Curso</th><th>Ficha</th></tr></thead>
+            <tbody id="listaTabla"></tbody>
+        </table>
+    </div>
+
+    <div id="statsPanel">
+        <div style="text-align: center;">
+            <h3 id="nombreEstudiante" style="color: var(--turquesa-oscuro); margin: 0;"></h3>
+            <p id="cursoEstudiante" style="color: #666; font-size: 0.9em;"></p>
+        </div>
+
+        <div id="listaMateriasContenedor" style="margin: 15px 0;"></div>
+
+        <div class="stats-resumen">
+            <div class="stat-box" style="color: #27ae60;"><span id="txtAprobados">0</span>Aprobadas</div>
+            <div class="stat-box" style="color: #e74c3c;"><span id="txtDesaprobados">0</span>Desaprobadas</div>
+            
+            <div class="stat-box promedio-central">
+                <b style="color: #555;">Promedio General</b>
+                <span id="txtPromedio" style="color: var(--turquesa-oscuro); font-size: 28px;">0</span>
+            </div>
+
+            <div class="stat-box destacado">
+                <b>Notas sobre el promedio</b>
+                <span id="txtSobrePromedio">0</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let datosAlumnos = {};
+        let alumnoSeleccionadoActual = null;
+        const NOTA_MINIMA = 7;
+
+        function registrar() {
+            const nom = document.getElementById('nombre').value.trim();
+            const mat = document.getElementById('materia').value.trim();
+            const cur = document.getElementById('curso').value.trim();
+            const nVal = document.getElementById('nota').value;
+
+            if(!nom || !mat || !cur || !nVal) { alert("¡Amicha, completá los campos!"); return; }
+
+            const nota = parseFloat(nVal);
+
+            if (!datosAlumnos[nom]) {
+                datosAlumnos[nom] = { curso: cur, registros: [] };
+            }
+
+            datosAlumnos[nom].registros.push({ materia: mat, nota: nota, recuperada: false });
+            actualizarTabla();
+            
+            document.getElementById('materia').value = '';
+            document.getElementById('nota').value = '';
+        }
+
+        function actualizarTabla() {
+            const tbody = document.getElementById('listaTabla');
+            tbody.innerHTML = '';
+            for (let nombre in datosAlumnos) {
+                const fila = document.createElement('tr');
+                fila.className = 'fila-alumno' + (alumnoSeleccionadoActual === nombre ? ' fila-activa' : '');
+                fila.onclick = () => toggleStats(nombre);
+                fila.innerHTML = `<td><b>${nombre}</b></td><td>${datosAlumnos[nombre].curso}</td><td style="font-size: 0.8em; color: var(--turquesa-oscuro)">Abrir Ficha</td>`;
+                tbody.appendChild(fila);
+            }
+        }
+
+        function recuperarNota(nombre, index) {
+            const nuevaNota = prompt("Nueva nota para recuperar (Aprobación 7):");
+            if (nuevaNota !== null && nuevaNota !== "") {
+                const n = parseFloat(nuevaNota);
+                if (n >= 0 && n <= 10) {
+                    datosAlumnos[nombre].registros[index].nota = n;
+                    datosAlumnos[nombre].registros[index].recuperada = true;
+                    alumnoSeleccionadoActual = null; 
+                    toggleStats(nombre);
+                }
+            }
+        }
+
+        function toggleStats(nombre) {
+            const panel = document.getElementById('statsPanel');
+            if (alumnoSeleccionadoActual === nombre) {
+                panel.style.display = 'none';
+                alumnoSeleccionadoActual = null;
+                actualizarTabla();
+                return;
+            }
+
+            alumnoSeleccionadoActual = nombre;
+            const info = datosAlumnos[nombre];
+            const listaMat = document.getElementById('listaMateriasContenedor');
+            listaMat.innerHTML = '';
+
+            let aprobadas = 0, desaprobadas = 0, sumaNotas = 0;
+
+            info.registros.forEach(reg => sumaNotas += reg.nota);
+            const promedio = sumaNotas / info.registros.length;
+
+            let sobrePromedio = 0;
+
+            info.registros.forEach((reg, index) => {
+                const item = document.createElement('div');
+                item.className = 'materia-item';
+                const esAprobada = reg.nota >= NOTA_MINIMA;
+                
+                if (reg.nota > promedio) sobrePromedio++;
+                if (esAprobada) aprobadas++; else desaprobadas++;
+
+                item.innerHTML = `
+                    <span><b>${reg.materia}</b>${reg.recuperada ? ' <small style="color: #999;">(Rec.)</small>' : ''}</span>
+                    <span style="display: flex; align-items: center;">
+                        <span style="color: ${esAprobada ? '#27ae60' : '#e74c3c'}; font-weight: bold; font-size: 1.1em;">${reg.nota}</span>
+                        ${!esAprobada ? `<button class="recuperar-btn" onclick="recuperarNota('${nombre}', ${index})">Recuperar</button>` : ''}
+                    </span>
+                `;
+                listaMat.appendChild(item);
+            });
+
+            document.getElementById('nombreEstudiante').innerText = nombre;
+            document.getElementById('cursoEstudiante').innerText = "Ficha Académica Personal - " + info.curso;
+            document.getElementById('txtAprobados').innerText = aprobadas;
+            document.getElementById('txtDesaprobados').innerText = desaprobadas;
+            document.getElementById('txtPromedio').innerText = promedio.toFixed(2);
+            document.getElementById('txtSobrePromedio').innerText = sobrePromedio;
+
+            panel.style.display = 'block';
+            actualizarTabla();
+        }
+    </script>
+</body>
+</html>

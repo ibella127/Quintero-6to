@@ -1,0 +1,112 @@
+/* Variables de color para Modo Claro y Oscuro */
+:root {
+    --bg-body: #f8f9fa;
+    --bg-card: #ffffff;
+    --text-main: #333333;
+    --text-muted: #777777;
+    --border-item: #2196F3;
+    --bg-input: #ffffff;
+    --shadow: rgba(0, 0, 0, 0.1);
+}
+
+[data-theme="dark"] {
+    --bg-body: #121212;
+    --bg-card: #1e1e1e;
+    --text-main: #e0e0e0;
+    --text-muted: #aaaaaa;
+    --border-item: #bb86fc;
+    --bg-input: #2d2d2d;
+    --shadow: rgba(0, 0, 0, 0.5);
+}
+
+body { 
+    font-family: 'Segoe UI', sans-serif; 
+    background-color: var(--bg-body); 
+    color: var(--text-main);
+    display: flex; 
+    justify-content: center; 
+    transition: background 0.3s ease;
+    margin: 0;
+}
+
+.main-container { width: 100%; max-width: 500px; text-align: center; margin-top: 30px; padding: 10px; }
+
+.panel-stats {
+    background: var(--bg-card);
+    border-radius: 10px;
+    padding: 15px;
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    box-shadow: 0 4px 6px var(--shadow);
+}
+
+.stat-item p { margin: 0; font-size: 0.75rem; color: var(--text-muted); font-weight: bold; }
+.stat-item span { font-size: 1.6rem; font-weight: bold; }
+
+.formulario {
+    background: var(--bg-card);
+    padding: 15px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+input {
+    background: var(--bg-input);
+    color: var(--text-main);
+    border: 1px solid #ccc;
+    padding: 5px;
+    border-radius: 4px;
+}
+
+#listaPendientes { padding: 0; text-align: left; }
+
+li {
+    background: var(--bg-card);
+    list-style: none;
+    padding: 15px;
+    margin-bottom: 12px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    border-left: 6px solid var(--border-item);
+    box-shadow: 0 2px 4px var(--shadow);
+}
+
+.badge-vencido {
+    background-color: #f44336;
+    color: white;
+    font-size: 0.6rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+.vencida-estilo { border-left-color: #f44336; background-color: rgba(244, 67, 54, 0.05); }
+.completada-estilo { text-decoration: line-through; color: var(--text-muted); }
+
+/* Estilos de botones inferiores MINI */
+.controles-inferiores {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    padding-bottom: 30px;
+}
+
+.btn-mini {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+    background-color: #6c757d;
+    color: white;
+    opacity: 0.8;
+}
+
+.btn-mini:hover { opacity: 1; }
+
+#btnModo { background-color: #343a40; }

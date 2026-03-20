@@ -1,0 +1,81 @@
+:root {
+    --turquesa: #00ced1;
+    --turquesa-oscuro: #008b8b;
+    --turquesa-claro: #e0ffff;
+    --blanco: #ffffff;
+    --fondo: #f0f4f4;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    background-color: var(--fondo);
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}
+
+.container {
+    background: var(--blanco);
+    width: 100%;
+    max-width: 600px;
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    border-top: 10px solid var(--turquesa);
+}
+
+h2, h3 { color: var(--turquesa-oscuro); text-align: center; }
+
+.input-group { margin-bottom: 15px; }
+
+label { display: block; margin-bottom: 5px; font-weight: bold; color: #444; }
+
+input {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+input:focus { border-color: var(--turquesa); outline: none; }
+
+button {
+    width: 100%;
+    background: var(--turquesa);
+    color: white;
+    border: none;
+    padding: 12px;
+    font-weight: bold;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover { background: var(--turquesa-oscuro); }
+
+hr { margin: 30px 0; border: 0; border-top: 1px solid #eee; }
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+}
+
+th { background: var(--turquesa-claro); color: var(--turquesa-oscuro); padding: 10px; }
+
+td { padding: 10px; text-align: center; border-bottom: 1px solid #eee; }
+
+.badge-aprobado { color: #27ae60; font-weight: bold; }
+.badge-desaprobado { color: #e74c3c; font-weight: bold; }
+
+.contadores {
+    display: flex;
+    justify-content: space-around;
+    margin-top: 25px;
+    padding: 15px;
+    background: var(--turquesa-claro);
+    border-radius: 8px;
+}
+
+.stat-box { font-weight: bold; color: var(--turquesa-oscuro); font-size: 18px; }

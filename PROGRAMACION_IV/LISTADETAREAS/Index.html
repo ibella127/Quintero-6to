@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor Pro - Pendientes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="main-container">
+        <h1>Examenes Sexto Año</h1>
+        
+        <div class="formulario">
+            <p>Tarea: <input type="text" id="pendiente" placeholder="Ej. Lengua"></p>
+            <p>Fecha: <input type="date" id="fechaVence"></p>
+            <button type="button" onclick="agregarTarea()">Añadir Examen</button>
+        </div>
+
+        <div class="panel-stats">
+            <div class="stat-item">
+                <p>Pendientes</p>
+                <span id="numPendientes">0</span>
+            </div>
+            <div class="stat-item">
+                <p>Hechas</p>
+                <span id="numHechas" style="color: #4CAF50;">0</span>
+            </div>
+            <div class="stat-item">
+                <p>Vencidas</p>
+                <span id="numVencidas" style="color: #f44336;">0</span>
+            </div>
+        </div>
+
+        <ul id="listaPendientes"></ul>
+
+        <div class="controles-inferiores">
+            <button type="button" class="btn-mini" onclick="ordenarAlfabeticamente()">🔠 Ordenar</button>
+            <button type="button" id="btnModo" class="btn-mini" onclick="alternarModo()">🌙 Modo</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
