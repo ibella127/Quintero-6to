@@ -1,0 +1,220 @@
+:root {
+    --p1: #9976f3;
+    --p2: #b67bff;
+    --p3: #b175ff;
+    --dark: #351464;
+    --bg-light: #e6dcff;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #e6dcff;
+    min-height: 100vh;
+    font-family: 'Arial', sans-serif;
+    overflow-x: hidden;
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* --- SIDEBAR IZQUIERDA --- */
+.sidebar {
+    width: 200px;
+    background: linear-gradient(to bottom, var(--p3), var(--p1));
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 0.5rem;
+    box-shadow: 5px 0 20px rgba(0,0,0,0.1);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+.side-img {
+    width: 130px; /* Tamaño que vos elegiste */
+    height: auto;
+    margin-bottom: 1.5rem;
+}
+
+.menu-title {
+    color: var(--dark);
+    font-size: 1.8rem;
+    font-weight: 900;
+    margin-bottom: 2.5rem;
+    text-align: center;
+}
+
+.nav-icons {
+    display: flex;
+    flex-direction: column;
+    gap: 3rem;
+}
+
+.nav-item img {
+    width: 50px;
+    height: auto;
+    transition: transform 0.3s ease;
+}
+
+.nav-item:hover img {
+    transform: scale(1.50); /* Tu efecto de agrandado */
+}
+
+/* --- CONTENIDO DERECHO CON DEGRADADO --- */
+.main-content {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start; /* Contenido arriba */
+    padding-top: 5vh;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    background: linear-gradient(135deg, var(--p2) 0%, var(--bg-light) 100%);
+}
+
+.hero-container {
+    max-width: 700px;
+    width: 100%;
+    text-align: center;
+}
+
+/* Título KRONO con efecto igual a los iconos */
+.krono-header {
+    width: 100%;
+    max-width: 320px;
+    height: auto;
+    margin-bottom: 1.5rem;
+    transition: transform 0.3s ease;
+    cursor: pointer;
+}
+
+.krono-header:hover {
+    transform: scale(1.30);
+}
+
+/* --- MAGIA DEL FLIP CARD (GIRO) --- */
+.flip-card {
+    background-color: transparent;
+    width: 100%;
+    height: 350px; 
+    perspective: 1000px;
+    margin-bottom: 2rem;
+}
+
+.flip-card-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    text-align: center;
+    transition: transform 0.8s;
+    transform-style: preserve-3d;
+}
+
+/* Girar al pasar el mouse */
+.flip-card:hover .flip-card-inner {
+    transform: rotateY(180deg);
+}
+
+.flip-card-front, .flip-card-back {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border-radius: 45px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    /* Borde oscuro y sombra pesada */
+    border: 5px solid var(--dark);
+    box-shadow: 0 20px 50px rgba(53, 20, 100, 0.3);
+}
+
+/* Cara Frontal (Texto) */
+.flip-card-front {
+    background-color: white;
+    padding: 3rem;
+}
+
+.flip-card-front p {
+    color: var(--dark);
+    font-size: 1.6rem;
+    line-height: 1.4;
+    font-weight: 600;
+}
+
+/* Cara Trasera (Imagen Escuela con Degradado Celeste Arriba) */
+.flip-card-back {
+    background-color: var(--p1);
+    transform: rotateY(180deg);
+    overflow: hidden;
+    position: relative;
+}
+
+/* El degradado celeste arriba de la imagen */
+.flip-card-back::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 40%;
+    background: linear-gradient(to bottom, rgba(135, 206, 235, 0.7) 0%, transparent 100%);
+    z-index: 1;
+}
+
+.school-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 0;
+}
+
+.footer-msg {
+    font-size: 1.1rem;
+    color: var(--dark);
+    font-weight: bold;
+    opacity: 0.9;
+}
+
+/* --- AJUSTES PARA CELULARES --- */
+@media (max-width: 768px) {
+    .sidebar {
+        width: 85px;
+    }
+    
+    .side-img {
+        width: 60px; /* Más chico en celu para que no tape todo */
+    }
+
+    .menu-title {
+        font-size: 0.9rem;
+    }
+
+    .nav-item img {
+        width: 40px;
+    }
+
+    .flip-card {
+        height: 280px;
+    }
+
+    .flip-card-front p {
+        font-size: 1.1rem;
+    }
+
+    .krono-header {
+        max-width: 220px;
+    }
+}
