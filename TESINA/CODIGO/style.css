@@ -1,220 +1,276 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap');
+
 :root {
-    --p1: #9976f3;
-    --p2: #b67bff;
-    --p3: #b175ff;
-    --dark: #351464;
-    --bg-light: #e6dcff;
+    --sky-light:   #ddeeff;
+    --sky-mid:     #a8d4f5;
+    --sky-strong:  #4ba3d9;
+    --sky-deep:    #1a6fa8;
+    --cream-dark:  #c8bfa0;
+    --cream-mid:   #e8e0cc;
+    --cream-light: #f7f2e8;
+    --cream-pale:  #faf7f1;
+    --ink:         #1e2a38;
+    --ink-muted:   #4a5568;
 }
 
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* FONDO: degradé de crudo oscuro arriba → muy claro abajo */
+.bg-blur {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: linear-gradient(170deg, var(--cream-dark) 0%, var(--cream-mid) 35%, var(--cream-light) 65%, var(--cream-pale) 100%);
+    z-index: -1;
+    transition: filter 0.2s ease;
 }
 
 body {
-    background: #e6dcff;
     min-height: 100vh;
-    font-family: 'Arial', sans-serif;
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
     overflow-x: hidden;
 }
 
+/* ── LAYOUT: columna centrada sin sidebar ── */
 .layout {
-    display: flex;
-    min-height: 100vh;
-    width: 100%;
-}
-
-/* --- SIDEBAR IZQUIERDA --- */
-.sidebar {
-    width: 200px;
-    background: linear-gradient(to bottom, var(--p3), var(--p1));
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 2rem 0.5rem;
-    box-shadow: 5px 0 20px rgba(0,0,0,0.1);
-    flex-shrink: 0;
-    z-index: 10;
+    width: 100%;
 }
 
-.side-img {
-    width: 130px; /* Tamaño que vos elegiste */
-    height: auto;
-    margin-bottom: 1.5rem;
+/* ── HEADER: logo + nav centrado ── */
+.sidebar {
+    width: 100%;
+    background: linear-gradient(to right, transparent, rgba(168,212,245,0.18), transparent);
+    border-bottom: 1px solid rgba(75,163,217,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 2rem 1rem 1.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
 }
 
-.menu-title {
-    color: var(--dark);
-    font-size: 1.8rem;
-    font-weight: 900;
-    margin-bottom: 2.5rem;
-    text-align: center;
-}
+.logo-top { margin-bottom: 1.2rem; }
+.side-img { width: 110px; height: auto; transition: transform 0.3s ease; }
+.side-img:hover { transform: scale(1.08); }
+
+.menu-title { display: none; } /* no se usa en layout centrado */
 
 .nav-icons {
     display: flex;
+    flex-direction: row;
+    gap: 2.5rem;
+    align-items: center;
+}
+
+.nav-item {
+    display: flex;
     flex-direction: column;
-    gap: 3rem;
+    align-items: center;
+    gap: 6px;
+    text-decoration: none;
+    opacity: 0.75;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.nav-item:hover {
+    opacity: 1;
+    transform: translateY(-3px);
 }
 
 .nav-item img {
-    width: 50px;
-    height: auto;
-    transition: transform 0.3s ease;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.nav-item:hover img {
-    transform: scale(1.50); /* Tu efecto de agrandado */
-}
+.nav-item:hover img { transform: scale(1.15); }
 
-/* --- CONTENIDO DERECHO CON DEGRADADO --- */
+/* ── CONTENIDO ── */
 .main-content {
-    flex: 1;
+    width: 100%;
+    max-width: 760px;
+    padding: 0 1.5rem;
+}
+
+/* ── HERO ── */
+.hero-section {
+    min-height: 80vh;
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Contenido arriba */
-    padding-top: 5vh;
-    padding-left: 2rem;
-    padding-right: 2rem;
-    background: linear-gradient(135deg, var(--p2) 0%, var(--bg-light) 100%);
+    align-items: center;
+    padding: 5vh 0 4vh;
 }
 
 .hero-container {
-    max-width: 700px;
     width: 100%;
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2rem;
 }
 
-/* Título KRONO con efecto igual a los iconos */
+.main-title-img { margin-bottom: 0.5rem; }
+
 .krono-header {
     width: 100%;
-    max-width: 320px;
-    height: auto;
-    margin-bottom: 1.5rem;
-    transition: transform 0.3s ease;
+    max-width: 240px;
     cursor: pointer;
+    transition: transform 0.35s ease;
 }
+.krono-header:hover { transform: scale(1.12); }
 
-.krono-header:hover {
-    transform: scale(1.30);
-}
-
-/* --- MAGIA DEL FLIP CARD (GIRO) --- */
+/* ── FLIP CARD ── */
 .flip-card {
-    background-color: transparent;
     width: 100%;
-    height: 350px; 
+    max-width: 520px;
+    height: 260px;
     perspective: 1000px;
-    margin-bottom: 2rem;
 }
 
 .flip-card-inner {
     position: relative;
-    width: 100%;
-    height: 100%;
-    text-align: center;
+    width: 100%; height: 100%;
     transition: transform 0.8s;
     transform-style: preserve-3d;
 }
 
-/* Girar al pasar el mouse */
-.flip-card:hover .flip-card-inner {
-    transform: rotateY(180deg);
-}
+.flip-card:hover .flip-card-inner { transform: rotateY(180deg); }
 
-.flip-card-front, .flip-card-back {
+.flip-card-front,
+.flip-card-back {
     position: absolute;
-    width: 100%;
-    height: 100%;
-    -webkit-backface-visibility: hidden;
+    width: 100%; height: 100%;
     backface-visibility: hidden;
-    border-radius: 45px;
+    border-radius: 24px;
+    border: 1.5px solid rgba(75,163,217,0.35);
     display: flex;
     align-items: center;
     justify-content: center;
-    /* Borde oscuro y sombra pesada */
-    border: 5px solid var(--dark);
-    box-shadow: 0 20px 50px rgba(53, 20, 100, 0.3);
+    overflow: hidden;
 }
 
-/* Cara Frontal (Texto) */
 .flip-card-front {
-    background-color: white;
-    padding: 3rem;
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(8px);
+    padding: 2rem 2.5rem;
 }
 
 .flip-card-front p {
-    color: var(--dark);
-    font-size: 1.6rem;
-    line-height: 1.4;
-    font-weight: 600;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.45rem;
+    font-weight: 400;
+    font-style: italic;
+    line-height: 1.55;
+    color: var(--ink);
 }
 
-/* Cara Trasera (Imagen Escuela con Degradado Celeste Arriba) */
 .flip-card-back {
-    background-color: var(--p1);
+    background: var(--sky-mid);
     transform: rotateY(180deg);
-    overflow: hidden;
-    position: relative;
 }
 
-/* El degradado celeste arriba de la imagen */
-.flip-card-back::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 40%;
-    background: linear-gradient(to bottom, rgba(135, 206, 235, 0.7) 0%, transparent 100%);
-    z-index: 1;
-}
-
-.school-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    position: absolute;
-    top: 0;
-    left: 0;
-    z-index: 0;
-}
+.school-img { width: 100%; height: 100%; object-fit: cover; }
 
 .footer-msg {
-    font-size: 1.1rem;
-    color: var(--dark);
-    font-weight: bold;
-    opacity: 0.9;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.85rem;
+    font-weight: 300;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    text-transform: uppercase;
 }
 
-/* --- AJUSTES PARA CELULARES --- */
-@media (max-width: 768px) {
-    .sidebar {
-        width: 85px;
-    }
-    
-    .side-img {
-        width: 60px; /* Más chico en celu para que no tape todo */
-    }
+/* ── FORMULARIO ── */
+.contact-section {
+    padding: 5rem 0 7rem;
+    display: flex;
+    justify-content: center;
+}
 
-    .menu-title {
-        font-size: 0.9rem;
-    }
+.form-container {
+    width: 100%;
+    background: rgba(255,255,255,0.78);
+    padding: 3rem 2.5rem;
+    border-radius: 28px;
+    border: 1.5px solid rgba(75,163,217,0.22);
+    backdrop-filter: blur(10px);
+}
 
-    .nav-item img {
-        width: 40px;
-    }
+.section-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 2.4rem;
+    font-weight: 600;
+    margin-bottom: 2rem;
+    text-align: center;
+    color: var(--ink);
+}
+.section-title span { color: var(--sky-deep); font-style: italic; }
 
-    .flip-card {
-        height: 280px;
-    }
+.krono-form { display: flex; flex-direction: column; gap: 14px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 
-    .flip-card-front p {
-        font-size: 1.1rem;
-    }
+input, textarea {
+    padding: 14px 16px;
+    border: 1.5px solid rgba(75,163,217,0.3);
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    background: rgba(255,255,255,0.7);
+    color: var(--ink);
+    outline: none;
+    transition: border-color 0.25s ease, background 0.25s ease;
+}
+input:focus, textarea:focus {
+    border-color: var(--sky-strong);
+    background: white;
+}
+textarea { min-height: 120px; resize: none; }
 
-    .krono-header {
-        max-width: 220px;
-    }
+.btn-enviar {
+    background: var(--sky-deep);
+    color: white;
+    padding: 14px;
+    border: none;
+    border-radius: 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+    transition: background 0.25s ease, transform 0.2s ease;
+}
+.btn-enviar:hover { background: var(--sky-strong); transform: translateY(-2px); }
+
+/* ── MOBILE ── */
+@media (max-width: 640px) {
+    .side-img { width: 80px; }
+    .nav-icons { gap: 1.8rem; }
+    .nav-item img { width: 36px; height: 36px; }
+    .flip-card { height: 210px; }
+    .flip-card-front p { font-size: 1.15rem; }
+    .form-row { grid-template-columns: 1fr; }
+    .section-title { font-size: 1.8rem; }
+    .form-container { padding: 2rem 1.5rem; }
+}
+
+/* ══════════════════════════════════
+   HEADER — ocultar al hacer scroll
+══════════════════════════════════ */
+.sidebar {
+    transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+                opacity   0.35s ease;
+}
+.sidebar.header-oculto {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
 }

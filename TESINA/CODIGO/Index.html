@@ -7,50 +7,65 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div class="bg-blur"></div>
 
     <div class="layout">
-        <aside class="sidebar">
+
+        <header class="sidebar">
             <div class="logo-top">
-                <img src="logo-lateral.png" alt="Logo" class="side-img">
-            </div> 
-            
-            <h2 class="menu-title">MENÚ</h2>
-            
+                <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+            </div>
             <nav class="nav-icons">
-                <a href="alumno.html" target="_blank" class="nav-item">
+                <a href="alumno.html" class="nav-item">
                     <img src="icono-alumno.png" alt="Alumno">
                 </a>
-                <a href="preceptoria.html" target="_blank" class="nav-item">
+                <a href="preceptoria.html" class="nav-item">
                     <img src="icono-prece.png" alt="Preceptoría">
                 </a>
             </nav>
-        </aside>
+        </header>
 
         <main class="main-content">
-            <div class="hero-container">
-                
-                <div class="main-title-img">
-                    <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header">
-                </div>
-                
-                <div class="flip-card">
-                    <div class="flip-card-inner">
-                        
-                        <div class="flip-card-front">
-                            <p>Es una APP que te ayudará a llevar un conteo de tus faltas para mejorar tu rendimiento y ayudar al prece con su trabajo ... y te brinda premios en cantina!!</p>
-                        </div>
 
-                        <div class="flip-card-back">
-                            <img src="imagen-escuela.png" alt="Mi Escuela" class="school-img">
-                        </div>
-
+            <section class="hero-section">
+                <div class="hero-container">
+                    <div class="main-title-img">
+                        <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header">
                     </div>
-                </div>
 
-                <p class="footer-msg">Entra a tu icono a la izquierda para más información</p>
-            </div>
+                    <div class="flip-card">
+                        <div class="flip-card-inner">
+                            <div class="flip-card-front">
+                                <p>Es una APP que te ayudará a llevar un conteo de tus faltas para mejorar tu rendimiento y ayudar al prece con su trabajo... ¡y te brinda premios en cantina!</p>
+                            </div>
+                            <div class="flip-card-back">
+                                <img src="imagen-escuela.png" alt="Mi Escuela" class="school-img">
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="footer-msg">Deslizá hacia abajo para dejarnos tu consulta</p>
+                </div>
+            </section>
+
+            <section id="contacto" class="contact-section">
+                <div class="form-container">
+                    <h2 class="section-title">¿Tenés alguna duda? <span>Escribinos</span></h2>
+
+                    <form id="contactForm" action="https://formspree.io/f/mgopoaoa" method="POST" class="krono-form">
+                        <div class="form-row">
+                            <input type="text" name="nombre" id="nombre" placeholder="Nombre completo" required>
+                            <input type="email" name="email" id="email" placeholder="Gmail" required>
+                        </div>
+                        <textarea name="consulta" id="consulta" placeholder="Escribí tu consulta aquí..." required></textarea>
+                        <button type="submit" class="btn-enviar">Enviar Consulta</button>
+                    </form>
+                </div>
+            </section>
+
         </main>
     </div>
 
+    <script src="script.js"></script>
 </body>
 </html>

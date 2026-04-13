@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRONO | Preceptoría</title>
+    <link rel="stylesheet" href="prece-style.css">
+</head>
+<body>
+    <div class="bg-blur"></div>
+    <div class="layout">
+
+        <header class="sidebar">
+            <div class="logo-top">
+                <a href="Index.html" class="logo-top">
+                    <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+                </a>
+            </div>
+            <nav class="nav-icons">
+                <a href="alumno.html" class="nav-item">
+                    <img src="icono-alumno.png" alt="Alumno">
+                </a>
+                <a href="preceptoria.html" class="nav-item active">
+                    <img src="icono-prece.png" alt="Preceptoría">
+                </a>
+            </nav>
+        </header>
+
+        <main class="main-content flex-center">
+            <div class="prece-container">
+                <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header-main">
+
+                <!-- ══════════ PANTALLA DE LOGIN ══════════ -->
+                <div id="login-screen">
+                    <h1 class="section-title-prece">Acceso Preceptores</h1>
+                    <p class="subtitle-prece">Ingresá la contraseña para continuar</p>
+
+                    <div class="login-card">
+                        <div class="input-icon-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="password-input" placeholder="Contraseña de preceptoría" class="login-input">
+                            <button class="toggle-pw" onclick="togglePw()" title="Mostrar/ocultar">👁</button>
+                        </div>
+                        <p id="login-error" class="login-error" style="display:none;">Contraseña incorrecta. Intentá de nuevo.</p>
+                        <button class="btn-login" onclick="verificarPassword()">Ingresar</button>
+                    </div>
+                </div>
+
+                <!-- ══════════ PANEL DE GESTIÓN ══════════ -->
+                <div id="panel-screen" style="display:none;">
+                    <div class="panel-header-row">
+                        <h1 class="section-title-prece" style="margin-bottom:0;">Panel de Gestión</h1>
+                        <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                    </div>
+
+                    <div class="selector-cursos-grid">
+                        <button class="btn-curso" onclick="seleccionarCurso(1)">1° AÑO</button>
+                        <button class="btn-curso" onclick="seleccionarCurso(2)">2° AÑO</button>
+                        <button class="btn-curso" onclick="seleccionarCurso(3)">3° AÑO</button>
+                        <button class="btn-curso" onclick="seleccionarCurso(4)">4° AÑO</button>
+                        <button class="btn-curso" onclick="seleccionarCurso(5)">5° AÑO</button>
+                        <button class="btn-curso" onclick="seleccionarCurso(6)">6° AÑO</button>
+                    </div>
+
+                    <div id="display-datos" class="display-area">
+                        <p class="instruccion">Seleccioná un curso para ver la lista de alumnos</p>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="prece-script.js"></script>
+</body>
+</html>

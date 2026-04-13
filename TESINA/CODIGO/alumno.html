@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KRONO | Alumno</title>
+    <link rel="stylesheet" href="alumno-style.css">
+    <!-- Chart.js para los gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="bg-blur"></div>
+    <div class="layout">
+
+        <header class="sidebar">
+            <div class="logo-top">
+            <a href="Index.html" class="logo-top">
+                <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+            </a>
+            </a>
+            </div>
+            <nav class="nav-icons">
+                <a href="alumno.html" class="nav-item active">
+                    <img src="icono-alumno.png" alt="Alumno">
+                </a>
+                <a href="preceptoria.html" class="nav-item">
+                    <img src="icono-prece.png" alt="Preceptoría">
+                </a>
+            </nav>
+        </header>
+
+        <main class="main-content flex-center">
+            <div class="alumno-container">
+                <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header-main">
+
+                <!-- ══════════ LOGIN ══════════ -->
+                <div id="login-screen">
+                    <h1 class="section-title-alumno">¡Hola, estudiante!</h1>
+                    <p class="subtitle-alumno">Ingresá con tu correo institucional para continuar</p>
+                    <div class="login-card">
+                        <div class="input-icon-wrap">
+                            <span class="input-icon">✉️</span>
+                            <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
+                        </div>
+                        <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> para ingresar.</p>
+                        <button class="btn-login" onclick="verificarEmail()">Ingresar</button>
+                    </div>
+                </div>
+
+                <!-- ══════════ PANEL ══════════ -->
+                <div id="panel-screen" style="display:none;">
+
+                    <div class="panel-header-row">
+                        <div>
+                            <h1 class="section-title-alumno" style="margin-bottom:4px;">Mi Panel</h1>
+                            <p id="bienvenida-texto" class="subtitle-alumno" style="margin:0;"></p>
+                        </div>
+                        <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                    </div>
+
+                    <!-- Selector de curso -->
+                    <div class="selector-cursos-grid">
+                        <button class="btn-curso" onclick="verCurso(1)">1° AÑO</button>
+                        <button class="btn-curso" onclick="verCurso(2)">2° AÑO</button>
+                        <button class="btn-curso" onclick="verCurso(3)">3° AÑO</button>
+                        <button class="btn-curso" onclick="verCurso(4)">4° AÑO</button>
+                        <button class="btn-curso" onclick="verCurso(5)">5° AÑO</button>
+                        <button class="btn-curso" onclick="verCurso(6)">6° AÑO</button>
+                    </div>
+
+                    <div id="display-datos" class="display-area">
+                        <p class="instruccion">Seleccioná tu curso para ver la información</p>
+                    </div>
+
+                    <!-- ══════════ ESTADÍSTICAS ══════════ -->
+                    <div class="stats-section">
+
+                        <!-- Tarjeta resumen numérico -->
+                        <div class="stats-resumen-grid">
+                            <div class="resumen-card">
+                                <span class="resumen-numero" id="stat-total">12</span>
+                                <span class="resumen-label">Faltas totales</span>
+                            </div>
+                            <div class="resumen-card">
+                                <span class="resumen-numero injust" id="stat-injust">4</span>
+                                <span class="resumen-label">Injustificadas</span>
+                            </div>
+                            <div class="resumen-card">
+                                <span class="resumen-numero just" id="stat-just">8</span>
+                                <span class="resumen-label">Justificadas</span>
+                            </div>
+                            <div class="resumen-card">
+                                <span class="resumen-numero fotos" id="stat-fotos">6</span>
+                                <span class="resumen-label">Clases subidas</span>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico 1: Faltas por mes -->
+                        <div class="grafico-card">
+                            <div class="grafico-header">
+                                <div>
+                                    <h3 class="grafico-titulo">Faltas a lo largo del año</h3>
+                                    <p class="grafico-subtitulo">Justificadas vs. injustificadas por mes</p>
+                                </div>
+                                <div class="grafico-leyenda">
+                                    <span class="leyenda-item"><span class="dot just-dot"></span>Justificadas</span>
+                                    <span class="leyenda-item"><span class="dot injust-dot"></span>Injustificadas</span>
+                                </div>
+                            </div>
+                            <div class="canvas-wrap">
+                                <canvas id="grafico-faltas"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Gráfico 2: % Beneficio -->
+                        <div class="grafico-card beneficio-card">
+                            <div class="grafico-header">
+                                <div>
+                                    <h3 class="grafico-titulo">Mi % de beneficio</h3>
+                                    <p class="grafico-subtitulo">Basado en faltas injustificadas y clases subidas</p>
+                                </div>
+                            </div>
+
+                            <div class="beneficio-layout">
+                                <!-- Medidor circular -->
+                                <div class="medidor-wrap">
+                                    <canvas id="grafico-beneficio" width="200" height="200"></canvas>
+                                    <div class="medidor-centro">
+                                        <span class="medidor-pct" id="pct-numero">72%</span>
+                                        <span class="medidor-label">beneficio</span>
+                                    </div>
+                                </div>
+
+                                <!-- Detalle de factores -->
+                                <div class="factores-wrap">
+                                    <p class="factores-titulo">¿Cómo se calcula?</p>
+
+                                    <div class="factor-row">
+                                        <span class="factor-nombre">Faltas injustificadas</span>
+                                        <div class="factor-barra-wrap">
+                                            <div class="factor-barra injust-barra" id="barra-injust" style="width:40%"></div>
+                                        </div>
+                                        <span class="factor-valor injust" id="val-injust">−4</span>
+                                    </div>
+
+                                    <div class="factor-row">
+                                        <span class="factor-nombre">Clases subidas</span>
+                                        <div class="factor-barra-wrap">
+                                            <div class="factor-barra fotos-barra" id="barra-fotos" style="width:60%"></div>
+                                        </div>
+                                        <span class="factor-valor fotos" id="val-fotos">+6</span>
+                                    </div>
+
+                                    <div class="beneficio-regla">
+                                        <p class="regla-titulo">Regla de beneficio</p>
+                                        <p class="regla-texto">Partís de <strong>100%</strong>. Cada falta injustificada resta <strong>−10 pts</strong>. Cada clase subida suma <strong>+2 pts</strong>. El beneficio se aplica a tu descuento en cantina.</p>
+                                    </div>
+
+                                    <div class="beneficio-estado" id="estado-chip">
+                                        <!-- Se completa por JS -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <!-- /stats-section -->
+
+                    <!-- ══════════ ACCIONES ══════════ -->
+                    <div class="acciones-grid">
+
+                        <div class="accion-card" id="card-tarde">
+                            <div class="accion-icon">⏰</div>
+                            <h3 class="accion-titulo">Llegué tarde</h3>
+                            <p class="accion-desc">Subí el motivo de tu llegada tarde para que quede registrado.</p>
+                            <button class="btn-accion" onclick="toggleFormTarde()">Cargar motivo</button>
+                            <div id="form-tarde" class="accion-form" style="display:none;">
+                                <textarea id="motivo-texto" placeholder="Explicá brevemente el motivo de tu llegada tarde..." class="accion-textarea"></textarea>
+                                <input type="file" id="motivo-archivo" accept="image/*,.pdf" class="accion-file">
+                                <label for="motivo-archivo" class="btn-file">📎 Adjuntar comprobante (opcional)</label>
+                                <span id="nombre-archivo" class="archivo-nombre"></span>
+                                <button class="btn-enviar-accion" onclick="enviarTarde()">Enviar motivo</button>
+                                <p id="tarde-ok" class="accion-ok" style="display:none;">✓ Motivo enviado correctamente</p>
+                            </div>
+                        </div>
+
+                        <div class="accion-card" id="card-foto">
+                            <div class="accion-icon">📸</div>
+                            <h3 class="accion-titulo">Foto de clase</h3>
+                            <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás.</p>
+                            <button class="btn-accion" onclick="toggleFormFoto()">Subir foto</button>
+                            <div id="form-foto" class="accion-form" style="display:none;">
+                                <input type="file" id="foto-input" accept="image/*" capture="environment" class="accion-file">
+                                <label for="foto-input" class="btn-file">📷 Elegir foto</label>
+                                <div id="foto-preview-wrap" style="display:none;">
+                                    <img id="foto-preview" class="foto-preview-img" alt="Vista previa">
+                                </div>
+                                <span id="nombre-foto" class="archivo-nombre"></span>
+                                <input type="text" id="foto-desc" placeholder="Descripción breve (ej: ejercicios de matemática)" class="login-input" style="margin-top:8px;">
+                                <button class="btn-enviar-accion" onclick="enviarFoto()">Enviar foto</button>
+                                <p id="foto-ok" class="accion-ok" style="display:none;">✓ Foto enviada correctamente</p>
+                            </div>
+                        </div>
+
+                    </div>
+
+                </div>
+                <!-- /panel-screen -->
+            </div>
+        </main>
+    </div>
+
+    <script src="alumno-script.js"></script>
+</body>
+</html>
