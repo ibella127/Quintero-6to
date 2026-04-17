@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>KRONO | Alumno</title>
     <link rel="stylesheet" href="alumno-style.css">
-    <!-- Chart.js para los gráficos -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
 <body>
@@ -14,10 +13,9 @@
 
         <header class="sidebar">
             <div class="logo-top">
-            <a href="Index.html" class="logo-top">
-                <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
-            </a>
-            </a>
+                <a href="Index.html" class="logo-top">
+                    <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+                </a>
             </div>
             <nav class="nav-icons">
                 <a href="alumno.html" class="nav-item active">
@@ -36,14 +34,39 @@
                 <!-- ══════════ LOGIN ══════════ -->
                 <div id="login-screen">
                     <h1 class="section-title-alumno">¡Hola, estudiante!</h1>
-                    <p class="subtitle-alumno">Ingresá con tu correo institucional para continuar</p>
+                    <p class="subtitle-alumno">Ingresá con tu cuenta institucional para continuar</p>
+
                     <div class="login-card">
-                        <div class="input-icon-wrap">
-                            <span class="input-icon">✉️</span>
-                            <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
+                        <!-- Modo Google -->
+                        <div id="google-login-section">
+                            <button class="btn-google" onclick="iniciarLoginGoogle()">
+                                <svg class="google-icon" viewBox="0 0 48 48">
+                                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                                    <path fill="none" d="M0 0h48v48H0z"/>
+                                </svg>
+                                Continuar con Google
+                            </button>
+
+                            <div class="divider-login"><span>o ingresá con tu correo</span></div>
                         </div>
-                        <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> para ingresar.</p>
-                        <button class="btn-login" onclick="verificarEmail()">Ingresar</button>
+
+                        <!-- Modo email/pass manual -->
+                        <div id="manual-login-section">
+                            <div class="input-icon-wrap">
+                                <span class="input-icon">✉️</span>
+                                <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
+                            </div>
+                            <div class="input-icon-wrap">
+                                <span class="input-icon">🔒</span>
+                                <input type="password" id="password-input" placeholder="Contraseña" class="login-input">
+                                <button class="toggle-pw" onclick="togglePassword()" id="toggle-pw-btn">👁</button>
+                            </div>
+                            <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> o verificá tu contraseña.</p>
+                            <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
+                        </div>
                     </div>
                 </div>
 
@@ -51,51 +74,58 @@
                 <div id="panel-screen" style="display:none;">
 
                     <div class="panel-header-row">
-                        <div>
-                            <h1 class="section-title-alumno" style="margin-bottom:4px;">Mi Panel</h1>
-                            <p id="bienvenida-texto" class="subtitle-alumno" style="margin:0;"></p>
+                        <div class="perfil-header">
+                            <div class="avatar-circle" id="avatar-circle">?</div>
+                            <div>
+                                <h1 class="section-title-alumno" style="margin-bottom:2px;" id="nombre-display">Mi Panel</h1>
+                                <p id="bienvenida-texto" class="subtitle-alumno" style="margin:0;"></p>
+                            </div>
                         </div>
                         <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
                     </div>
 
-                    <!-- Selector de curso -->
-                    <div class="selector-cursos-grid">
-                        <button class="btn-curso" onclick="verCurso(1)">1° AÑO</button>
-                        <button class="btn-curso" onclick="verCurso(2)">2° AÑO</button>
-                        <button class="btn-curso" onclick="verCurso(3)">3° AÑO</button>
-                        <button class="btn-curso" onclick="verCurso(4)">4° AÑO</button>
-                        <button class="btn-curso" onclick="verCurso(5)">5° AÑO</button>
-                        <button class="btn-curso" onclick="verCurso(6)">6° AÑO</button>
-                    </div>
-
-                    <div id="display-datos" class="display-area">
-                        <p class="instruccion">Seleccioná tu curso para ver la información</p>
+                    <!-- Info personal del alumno -->
+                    <div id="info-alumno-card" class="info-alumno-card">
+                        <div class="info-row">
+                            <span class="info-label">Curso</span>
+                            <span class="info-valor" id="info-curso">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">División</span>
+                            <span class="info-valor" id="info-division">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Legajo</span>
+                            <span class="info-valor" id="info-legajo">—</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Año lectivo</span>
+                            <span class="info-valor">2025</span>
+                        </div>
                     </div>
 
                     <!-- ══════════ ESTADÍSTICAS ══════════ -->
                     <div class="stats-section">
-
-                        <!-- Tarjeta resumen numérico -->
                         <div class="stats-resumen-grid">
                             <div class="resumen-card">
-                                <span class="resumen-numero" id="stat-total">12</span>
+                                <span class="resumen-numero" id="stat-total">—</span>
                                 <span class="resumen-label">Faltas totales</span>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero injust" id="stat-injust">4</span>
+                                <span class="resumen-numero injust" id="stat-injust">—</span>
                                 <span class="resumen-label">Injustificadas</span>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero just" id="stat-just">8</span>
+                                <span class="resumen-numero just" id="stat-just">—</span>
                                 <span class="resumen-label">Justificadas</span>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero fotos" id="stat-fotos">6</span>
+                                <span class="resumen-numero fotos" id="stat-fotos">—</span>
                                 <span class="resumen-label">Clases subidas</span>
                             </div>
                         </div>
 
-                        <!-- Gráfico 1: Faltas por mes -->
+                        <!-- Gráfico faltas por mes -->
                         <div class="grafico-card">
                             <div class="grafico-header">
                                 <div>
@@ -112,7 +142,33 @@
                             </div>
                         </div>
 
-                        <!-- Gráfico 2: % Beneficio -->
+                        <!-- Detalle de faltas por mes -->
+                        <div class="grafico-card">
+                            <div class="grafico-header">
+                                <div>
+                                    <h3 class="grafico-titulo">Detalle de inasistencias</h3>
+                                    <p class="grafico-subtitulo">Por mes — con motivo y hora de llegada</p>
+                                </div>
+                                <div class="filtro-mes-wrap">
+                                    <select id="filtro-mes" class="filtro-select" onchange="filtrarFaltas()">
+                                        <option value="todos">Todos los meses</option>
+                                        <option value="Mar">Marzo</option>
+                                        <option value="Abr">Abril</option>
+                                        <option value="May">Mayo</option>
+                                        <option value="Jun">Junio</option>
+                                        <option value="Jul">Julio</option>
+                                        <option value="Ago">Agosto</option>
+                                        <option value="Sep">Septiembre</option>
+                                        <option value="Oct">Octubre</option>
+                                        <option value="Nov">Noviembre</option>
+                                        <option value="Dic">Diciembre</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div id="tabla-faltas-wrap"></div>
+                        </div>
+
+                        <!-- Gráfico beneficio -->
                         <div class="grafico-card beneficio-card">
                             <div class="grafico-header">
                                 <div>
@@ -120,85 +176,85 @@
                                     <p class="grafico-subtitulo">Basado en faltas injustificadas y clases subidas</p>
                                 </div>
                             </div>
-
                             <div class="beneficio-layout">
-                                <!-- Medidor circular -->
                                 <div class="medidor-wrap">
                                     <canvas id="grafico-beneficio" width="200" height="200"></canvas>
                                     <div class="medidor-centro">
-                                        <span class="medidor-pct" id="pct-numero">72%</span>
+                                        <span class="medidor-pct" id="pct-numero">—</span>
                                         <span class="medidor-label">beneficio</span>
                                     </div>
                                 </div>
-
-                                <!-- Detalle de factores -->
                                 <div class="factores-wrap">
                                     <p class="factores-titulo">¿Cómo se calcula?</p>
-
                                     <div class="factor-row">
                                         <span class="factor-nombre">Faltas injustificadas</span>
                                         <div class="factor-barra-wrap">
-                                            <div class="factor-barra injust-barra" id="barra-injust" style="width:40%"></div>
+                                            <div class="factor-barra injust-barra" id="barra-injust" style="width:0%"></div>
                                         </div>
-                                        <span class="factor-valor injust" id="val-injust">−4</span>
+                                        <span class="factor-valor injust" id="val-injust">—</span>
                                     </div>
-
                                     <div class="factor-row">
                                         <span class="factor-nombre">Clases subidas</span>
                                         <div class="factor-barra-wrap">
-                                            <div class="factor-barra fotos-barra" id="barra-fotos" style="width:60%"></div>
+                                            <div class="factor-barra fotos-barra" id="barra-fotos" style="width:0%"></div>
                                         </div>
-                                        <span class="factor-valor fotos" id="val-fotos">+6</span>
+                                        <span class="factor-valor fotos" id="val-fotos">—</span>
                                     </div>
-
                                     <div class="beneficio-regla">
                                         <p class="regla-titulo">Regla de beneficio</p>
                                         <p class="regla-texto">Partís de <strong>100%</strong>. Cada falta injustificada resta <strong>−10 pts</strong>. Cada clase subida suma <strong>+2 pts</strong>. El beneficio se aplica a tu descuento en cantina.</p>
                                     </div>
-
-                                    <div class="beneficio-estado" id="estado-chip">
-                                        <!-- Se completa por JS -->
-                                    </div>
+                                    <div class="beneficio-estado" id="estado-chip"></div>
                                 </div>
                             </div>
                         </div>
-
                     </div>
-                    <!-- /stats-section -->
 
                     <!-- ══════════ ACCIONES ══════════ -->
                     <div class="acciones-grid">
 
-                        <div class="accion-card" id="card-tarde">
-                            <div class="accion-icon">⏰</div>
-                            <h3 class="accion-titulo">Llegué tarde</h3>
-                            <p class="accion-desc">Subí el motivo de tu llegada tarde para que quede registrado.</p>
-                            <button class="btn-accion" onclick="toggleFormTarde()">Cargar motivo</button>
-                            <div id="form-tarde" class="accion-form" style="display:none;">
-                                <textarea id="motivo-texto" placeholder="Explicá brevemente el motivo de tu llegada tarde..." class="accion-textarea"></textarea>
-                                <input type="file" id="motivo-archivo" accept="image/*,.pdf" class="accion-file">
-                                <label for="motivo-archivo" class="btn-file">📎 Adjuntar comprobante (opcional)</label>
-                                <span id="nombre-archivo" class="archivo-nombre"></span>
-                                <button class="btn-enviar-accion" onclick="enviarTarde()">Enviar motivo</button>
-                                <p id="tarde-ok" class="accion-ok" style="display:none;">✓ Motivo enviado correctamente</p>
+                        <!-- Carta: Llegué tarde -->
+                        <div class="accion-card-wrap" id="wrap-tarde">
+                            <div class="card-aura aura-tarde"></div>
+                            <div class="accion-card-bg2"></div>
+                            <div class="accion-card-bg1"></div>
+                            <div class="accion-card" id="card-tarde">
+                                <div class="accion-icon">⏰</div>
+                                <h3 class="accion-titulo">Llegué tarde</h3>
+                                <p class="accion-desc">Subí el motivo de tu llegada tarde para que quede registrado.</p>
+                                <button class="btn-accion" onclick="toggleFormTarde()">Cargar motivo</button>
+                                <div id="form-tarde" class="accion-form" style="display:none;">
+                                    <textarea id="motivo-texto" placeholder="Explicá brevemente el motivo de tu llegada tarde..." class="accion-textarea"></textarea>
+                                    <input type="file" id="motivo-archivo" accept="image/*,.pdf" class="accion-file">
+                                    <label for="motivo-archivo" class="btn-file">📎 Adjuntar comprobante (opcional)</label>
+                                    <span id="nombre-archivo" class="archivo-nombre"></span>
+                                    <button class="btn-enviar-accion" onclick="enviarTarde()">Enviar motivo</button>
+                                    <p id="tarde-ok" class="accion-ok" style="display:none;">✓ Motivo enviado correctamente</p>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="accion-card" id="card-foto">
-                            <div class="accion-icon">📸</div>
-                            <h3 class="accion-titulo">Foto de clase</h3>
-                            <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás.</p>
-                            <button class="btn-accion" onclick="toggleFormFoto()">Subir foto</button>
-                            <div id="form-foto" class="accion-form" style="display:none;">
-                                <input type="file" id="foto-input" accept="image/*" capture="environment" class="accion-file">
-                                <label for="foto-input" class="btn-file">📷 Elegir foto</label>
-                                <div id="foto-preview-wrap" style="display:none;">
-                                    <img id="foto-preview" class="foto-preview-img" alt="Vista previa">
+                        <!-- Carta: Foto de clase -->
+                        <div class="accion-card-wrap" id="wrap-foto">
+                            <div class="card-aura aura-foto"></div>
+                            <div class="accion-card-bg2"></div>
+                            <div class="accion-card-bg1"></div>
+                            <div class="accion-card" id="card-foto">
+                                <div class="accion-icon">📸</div>
+                                <h3 class="accion-titulo">Foto de clase</h3>
+                                <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás.</p>
+                                <button class="btn-accion" onclick="toggleFormFoto()">Subir foto</button>
+                                <div id="form-foto" class="accion-form" style="display:none;">
+                                    <input type="file" id="foto-input" accept="image/*" capture="environment" class="accion-file">
+                                    <label for="foto-input" class="btn-file">📷 Elegir foto</label>
+                                    <div id="foto-preview-wrap" style="display:none;">
+                                        <img id="foto-preview" class="foto-preview-img" alt="Vista previa">
+                                    </div>
+                                    <span id="nombre-foto" class="archivo-nombre"></span>
+                                    <input type="text" id="foto-desc" placeholder="Descripción breve (ej: ejercicios de matemática)" class="login-input" style="margin-top:8px;">
+                                    <button class="btn-enviar-accion" onclick="enviarFoto()">Enviar foto</button>
+                                    <p id="foto-ok" class="accion-ok" style="display:none;">✓ Foto enviada correctamente</p>
                                 </div>
-                                <span id="nombre-foto" class="archivo-nombre"></span>
-                                <input type="text" id="foto-desc" placeholder="Descripción breve (ej: ejercicios de matemática)" class="login-input" style="margin-top:8px;">
-                                <button class="btn-enviar-accion" onclick="enviarFoto()">Enviar foto</button>
-                                <p id="foto-ok" class="accion-ok" style="display:none;">✓ Foto enviada correctamente</p>
                             </div>
                         </div>
 
@@ -208,6 +264,38 @@
                 <!-- /panel-screen -->
             </div>
         </main>
+    </div>
+
+    <!-- Modal Google simulado -->
+    <div id="modal-google" class="modal-overlay" style="display:none;" onclick="cerrarModalGoogle(event)">
+        <div class="modal-google-card">
+            <div class="modal-google-logo">
+                <svg viewBox="0 0 48 48" width="36" height="36">
+                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+                </svg>
+            </div>
+            <h2 class="modal-google-titulo">Iniciar sesión</h2>
+            <p class="modal-google-sub">Usá tu cuenta institucional</p>
+
+            <div class="modal-input-wrap">
+                <input type="email" id="google-email" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input modal-inp">
+            </div>
+            <div class="modal-input-wrap" id="google-pass-wrap" style="display:none;">
+                <input type="password" id="google-pass" placeholder="Contraseña" class="login-input modal-inp">
+            </div>
+
+            <p id="google-error" class="login-error" style="display:none; margin:6px 0;">Usá tu correo <strong>@escuelasproa.edu.ar</strong>.</p>
+
+            <div class="modal-google-btns">
+                <button class="btn-modal-cancel" onclick="cerrarModalGoogle()">Cancelar</button>
+                <button class="btn-modal-next" id="btn-google-next" onclick="pasoGoogle()">Siguiente</button>
+            </div>
+
+            <p class="modal-google-legal">Al continuar aceptás los <span class="link-fake">Términos del servicio</span> de KRONO</p>
+        </div>
     </div>
 
     <script src="alumno-script.js"></script>
