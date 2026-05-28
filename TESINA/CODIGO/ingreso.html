@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krono | Ingreso</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <script src="https://cdn.jsdelivr.net/npm/@zxing/library@0.19.1/umd/index.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,600;1,400;1,600&family=DM+Sans:wght@300;400;500&display=swap');
+
+        :root {
+            --sky-light:  #ddeeff;
+            --sky-mid:    #a8d4f5;
+            --sky-strong: #4ba3d9;
+            --sky-deep:   #1a6fa8;
+            --ink:        #1e2a38;
+            --ink-muted:  #4a5568;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            min-height: 100vh;
+            font-family: 'DM Sans', sans-serif;
+            color: var(--ink);
+            overflow: hidden;
+            transition: background-color 0.35s ease, color 0.35s ease;
+        }
+
+        /* FONDO */
+        .bg-blur {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(160deg, #d4eaf8 0%, #e5f2fb 22%, #f2f9fd 45%, #deeef8 68%, #edf5fb 100%);
+            z-index: -2;
+            transition: background 0.35s ease;
+        }
+        .bg-blur::before {
+            content: ''; position: absolute; inset: 0;
+            background:
+                radial-gradient(ellipse 55% 40% at 15% 20%, rgba(26,111,168,0.14) 0%, transparent 65%),
+                radial-gradient(ellipse 45% 50% at 85% 10%, rgba(75,163,217,0.16) 0%, transparent 60%);
+            animation: fondo-respirar 12s ease-in-out infinite alternate;
+        }
+        @keyframes fondo-respirar {
+            0%   { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1;   transform: scale(1.03); }
+        }
+
+        /* HEADER */
+        .sidebar {
+            width: 100%;
+            background: linear-gradient(to right, transparent, rgba(168,212,245,0.18), transparent);
+            border-bottom: 1px solid rgba(75,163,217,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.85rem 2rem;
+            backdrop-filter: blur(12px);
+            position: relative;
+            z-index: 10;
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+        .logo-top { display: flex; align-items: center; text-decoration: none; }
+        .side-img  { width: 75px; height: auto; }
+
+        .header-titulo {
+            position: absolute; left: 50%; transform: translateX(-50%);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.75rem; font-weight: 600;
+            letter-spacing: 0.15em; text-transform: uppercase;
+            color: var(--ink-muted);
+        }
+
+        /* TOGGLE MODO */
+        .modo-btn {
+            background: transparent; border: none; cursor: pointer; padding: 4px;
+        }
+        .modo-btn img { width: 52px; height: 52px; object-fit: contain; }
+
+        /* CONTENIDO PRINCIPAL */
+        .ingreso-main {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: calc(100vh - 80px);
+            padding: 2rem 1.5rem;
+            gap: 1.5rem;
+        }
+
+        /* CÁMARA */
+        .scanner-wrap {
+            position: relative;
+            width: 100%;
+            max-width: 420px;
+        }
+        .scanner-card {
+            background: rgba(255,255,255,0.78);
+            border: 1.5px solid rgba(75,163,217,0.3);
+            border-radius: 24px;
+            overflow: hidden;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 8px 32px rgba(26,111,168,0.18);
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+        #scanner-video {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            border-radius: 22px;
+            display: block;
+        }
+
+        /* Marco animado del scanner */
+        .scanner-frame {
+            position: absolute;
+            inset: 12px;
+            border-radius: 16px;
+            pointer-events: none;
+        }
+        .scanner-frame::before,
+        .scanner-frame::after {
+            content: '';
+            position: absolute;
+            width: 36px; height: 36px;
+            border-color: var(--sky-strong);
+            border-style: solid;
+        }
+        .scanner-frame::before { top: 0; left: 0; border-width: 3px 0 0 3px; border-radius: 8px 0 0 0; }
+        .scanner-frame::after  { bottom: 0; right: 0; border-width: 0 3px 3px 0; border-radius: 0 0 8px 0; }
+
+        /* Línea de escaneo animada */
+        .scanner-line {
+            position: absolute;
+            left: 16px; right: 16px;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, var(--sky-strong), transparent);
+            top: 16px;
+            animation: scan-line 2.5s ease-in-out infinite;
+            pointer-events: none;
+        }
+        @keyframes scan-line {
+            0%   { top: 16px;   opacity: 0.8; }
+            50%  { top: calc(100% - 18px); opacity: 1; }
+            100% { top: 16px;   opacity: 0.8; }
+        }
+
+        /* ESTADO / RESULTADO */
+        .estado-wrap {
+            width: 100%;
+            max-width: 420px;
+            min-height: 90px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .estado-card {
+            width: 100%;
+            background: rgba(255,255,255,0.82);
+            border: 1.5px solid rgba(75,163,217,0.25);
+            border-radius: 18px;
+            padding: 1.2rem 1.8rem;
+            text-align: center;
+            backdrop-filter: blur(8px);
+            box-shadow: 0 4px 20px rgba(26,111,168,0.12);
+            display: none;
+            animation: pop-in 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+            transition: background 0.35s ease, border-color 0.35s ease;
+        }
+        @keyframes pop-in {
+            from { transform: scale(0.92); opacity: 0; }
+            to   { transform: scale(1);    opacity: 1; }
+        }
+
+        .estado-card.estado-ok    { border-color: rgba(45,138,94,0.4); }
+        .estado-card.estado-error { border-color: rgba(200,80,60,0.4); }
+        .estado-card.estado-show  { display: block; }
+
+        .estado-emoji { font-size: 2rem; display: block; margin-bottom: 6px; }
+        .estado-nombre {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem; font-weight: 600;
+            color: var(--ink); display: block;
+        }
+        .estado-hora {
+            font-size: 0.9rem; color: var(--ink-muted);
+            margin-top: 4px; display: block;
+        }
+        .estado-badge {
+            display: inline-block; margin-top: 8px;
+            padding: 3px 12px; border-radius: 999px;
+            font-size: 0.75rem; font-weight: 600;
+        }
+        .badge-ok    { background: rgba(45,138,94,0.15);  color: #2d8a5e; }
+        .badge-tarde { background: rgba(200,80,60,0.12);  color: #c84040; }
+        .badge-error { background: rgba(200,80,60,0.12);  color: #c84040; }
+
+        /* INSTRUCCIÓN SUPERIOR */
+        .instruccion-top {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .instruccion-titulo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: 0.02em;
+        }
+        .instruccion-sub {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.82rem;
+            color: var(--ink-muted);
+            letter-spacing: 0.04em;
+        }
+        .kbd-enter {
+            display: inline-block;
+            background: rgba(75,163,217,0.12);
+            border: 1.5px solid rgba(75,163,217,0.35);
+            border-bottom-width: 3px;
+            border-radius: 6px;
+            padding: 1px 9px;
+            font-family: 'DM Sans', monospace;
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--sky-deep);
+            letter-spacing: 0.05em;
+        }
+        body.dark-mode .instruccion-titulo { color: var(--ink); }
+        body.dark-mode .kbd-enter {
+            background: rgba(75,163,217,0.10);
+            border-color: rgba(75,163,217,0.3);
+            color: var(--sky-mid);
+        }
+
+        /* INSTRUCCIÓN */
+        .instruccion-scan {
+            font-size: 0.82rem;
+            color: var(--ink-muted);
+            text-align: center;
+            letter-spacing: 0.04em;
+            animation: bounce-hint 2.6s ease-in-out infinite;
+        }
+        @keyframes bounce-hint {
+            0%,100% { transform: translateY(0);   opacity: 0.7; }
+            50%      { transform: translateY(4px); opacity: 1; }
+        }
+
+        /* ── DARK MODE ── */
+        body.dark-mode { --ink: #c8dff0; --ink-muted: #7aa8c8; color: var(--ink); }
+
+        body.dark-mode .bg-blur {
+            background: linear-gradient(160deg, #060e18 0%, #091422 22%, #0c1a2e 45%, #091522 68%, #060f1c 100%);
+        }
+        body.dark-mode .sidebar {
+            background: linear-gradient(to right, transparent, rgba(26,111,168,0.15), transparent);
+            border-bottom-color: rgba(75,163,217,0.18);
+        }
+        body.dark-mode .scanner-card,
+        body.dark-mode .estado-card {
+            background: rgba(8,20,38,0.88) !important;
+            border-color: rgba(75,163,217,0.22) !important;
+        }
+        body.dark-mode .estado-nombre { color: var(--ink); }
+        body.dark-mode .estado-hora   { color: var(--ink-muted); }
+        body.dark-mode .instruccion-scan { color: var(--ink-muted); }
+    </style>
+</head>
+<body>
+    <div class="bg-blur"></div>
+
+    <header class="sidebar">
+        <a href="Index.html" class="logo-top">
+            <img src="logo-lateral.png" alt="KRONO" class="side-img" id="logo-img">
+        </a>
+        <span class="header-titulo">🚪 Control de Ingreso</span>
+        <button class="modo-btn" id="modo-toggle-btn" onclick="toggleModo()" aria-label="Cambiar modo">
+            <img src="Modo_claro.png" alt="modo" id="modo-img">
+        </button>
+    </header>
+
+    <main class="ingreso-main">
+
+        <!-- Instrucción arriba -->
+        <div class="instruccion-top">
+            <p class="instruccion-titulo">Mostrá tu QR a la cámara</p>
+            <p class="instruccion-sub">Brillo al máximo · presioná <span class="kbd-enter">Enter</span> para escanear</p>
+        </div>
+
+        <!-- Cámara scanner -->
+        <div class="scanner-wrap">
+            <div class="scanner-card">
+                <video id="scanner-video" playsinline muted></video>
+            </div>
+            <div class="scanner-frame"></div>
+            <div class="scanner-line"></div>
+        </div>
+
+        <!-- Resultado -->
+        <div class="estado-wrap">
+            <div class="estado-card" id="estado-card">
+                <span class="estado-emoji" id="estado-emoji">✅</span>
+                <span class="estado-nombre" id="estado-nombre">—</span>
+                <span class="estado-hora"   id="estado-hora">—</span>
+                <span class="estado-badge"  id="estado-badge"></span>
+            </div>
+        </div>
+
+        <p class="instruccion-scan">Si no se detecta, acercá más el cel y presioná Enter de nuevo</p>
+
+    </main>
+
+    <canvas id="scanner-canvas" style="display:none;"></canvas>
+
+    <script>
+    // ── DARK MODE ──────────────────────────────────────────────
+    (function () {
+        const isDark = localStorage.getItem('krono-dark') === '1';
+        if (isDark) document.body.classList.add('dark-mode');
+        actualizarModoImg(isDark);
+    })();
+
+    function actualizarModoImg(oscuro) {
+        const img = document.getElementById('modo-img');
+        if (img) img.src = oscuro ? 'Modo_oscuro.png' : 'Modo_claro.png';
+
+        // Cambiar logos según modo
+        const logo = document.getElementById('logo-img');
+        if (logo) logo.src = oscuro ? 'logo-lateral-blanco.png' : 'logo-lateral.png';
+    }
+
+    function toggleModo() {
+        const ahora = document.body.classList.toggle('dark-mode');
+        localStorage.setItem('krono-dark', ahora ? '1' : '0');
+        actualizarModoImg(ahora);
+    }
+
+    // ── SCANNER QR con ZXing ────────────────────────────────────
+    const BACKEND      = 'http://127.0.0.1:5000';
+    const HORA_ENTRADA = '07:30';
+    let escaneando    = true;
+    let ultimoQR      = '';
+    let cooldownTimer = null;
+
+    function iniciarScanner() {
+        const codeReader = new ZXing.BrowserQRCodeReader();
+        codeReader.listVideoInputDevices()
+            .then(devices => {
+                const deviceId = devices.length > 1
+                    ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]).deviceId
+                    : (devices[0] || {}).deviceId;
+                return codeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
+                    if (result && escaneando) {
+                        const datos = result.getText().trim();
+                        if (datos.startsWith('KRONO-') && datos !== ultimoQR) {
+                            ultimoQR   = datos;
+                            escaneando = false;
+                            const idAlumno = parseInt(datos.replace('KRONO-', ''));
+                            if (!isNaN(idAlumno)) registrarIngreso(idAlumno);
+                        }
+                    }
+                });
+            })
+            .catch(err => mostrarEstado('error', '📷', 'Sin acceso a la cámara', err.message, 'badge-error'));
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', iniciarScanner);
+    } else {
+        iniciarScanner();
+    }
+
+    function registrarIngreso(idAlumno) {
+        fetch(`${BACKEND}/registrar-ingreso`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id_alumno: idAlumno })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                mostrarEstado('error', '❌', 'Error', data.error, 'badge-error');
+            } else {
+                const esTarde  = data.hora > HORA_ENTRADA;
+                const emoji    = esTarde ? '⚠️' : '✅';
+                const badge    = esTarde ? 'badge-tarde' : 'badge-ok';
+                const badgeTxt = esTarde ? `Llegada tarde · ${data.hora}` : `A tiempo · ${data.hora}`;
+                mostrarEstado(esTarde ? 'tarde' : 'ok', emoji, `${data.apellido}, ${data.nombre}`, `${data.anio}° año`, badge, badgeTxt);
+            }
+            clearTimeout(cooldownTimer);
+            cooldownTimer = setTimeout(() => { escaneando = true; ultimoQR = ''; ocultarEstado(); }, 3000);
+        })
+        .catch(() => {
+            mostrarEstado('error', '❌', 'Sin conexión', 'Verificá que el servidor esté activo', 'badge-error');
+            clearTimeout(cooldownTimer);
+            cooldownTimer = setTimeout(() => { escaneando = true; ultimoQR = ''; ocultarEstado(); }, 3000);
+        });
+    }
+
+    function mostrarEstado(tipo, emoji, nombre, hora, badgeClass, badgeTxt) {
+        const card = document.getElementById('estado-card');
+        card.className = `estado-card estado-show estado-${tipo === 'ok' ? 'ok' : tipo === 'tarde' ? 'error' : 'error'}`;
+        document.getElementById('estado-emoji').textContent  = emoji;
+        document.getElementById('estado-nombre').textContent = nombre;
+        document.getElementById('estado-hora').textContent   = hora;
+        const badge = document.getElementById('estado-badge');
+        badge.className   = `estado-badge ${badgeClass || ''}`;
+        badge.textContent = badgeTxt || '';
+    }
+
+    function ocultarEstado() {
+        document.getElementById('estado-card').className = 'estado-card';
+    }
+    </script>
+</body>
+</html>

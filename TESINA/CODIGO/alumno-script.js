@@ -1,315 +1,440 @@
+
+// ══════════════════════════════════════════════
+//  MODO OSCURO — un solo botón, muestra el modo al que vas
+// ══════════════════════════════════════════════
+(function () {
+    if (localStorage.getItem('krono-dark') === '1') {
+        document.body && document.body.classList.add('dark-mode');
+    }
+
+    function crearToggle() {
+        if (document.getElementById('modo-toggle-btn')) return;
+
+        const isDark = localStorage.getItem('krono-dark') === '1';
+
+        const btn = document.createElement('button');
+        btn.id        = 'modo-toggle-btn';
+        btn.className = 'modo-btn modo-activo';
+        btn.style.marginLeft = 'auto';
+        btn.setAttribute('aria-label', 'Cambiar modo');
+        // Muestra el ícono del modo al que VAS a pasar
+        btn.innerHTML = '<img src="' + (isDark ? 'Modo_oscuro.png' : 'Modo_claro.png') + '" alt="cambiar modo">';
+
+        btn.addEventListener('click', () => {
+            const ahora = document.body.classList.toggle('dark-mode');
+            localStorage.setItem('krono-dark', ahora ? '1' : '0');
+            // ahora=true → quedás en oscuro → mostrás luna (para volver a claro)
+            // ahora=false → quedás en claro → mostrás sol (para ir a oscuro)
+            btn.querySelector('img').src = ahora ? 'Modo_oscuro.png' : 'Modo_claro.png';
+        });
+
+        const sidebar = document.querySelector('.sidebar');
+        if (sidebar) sidebar.appendChild(btn);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('krono-dark') === '1') document.body.classList.add('dark-mode');
+            crearToggle();
+        });
+    } else {
+        if (localStorage.getItem('krono-dark') === '1') document.body.classList.add('dark-mode');
+        crearToggle();
+    }
+})();
+
+
+
+// ══════════════════════════════════════════════
+//  CURSOR TRAIL — puntos que siguen al mouse
+// ══════════════════════════════════════════════
+(function () {
+    const TOTAL_DOTS = 18, DOT_SIZE = 7, EASE = 0.35;
+    const COLORS = ['rgba(75,163,217,0.85)','rgba(26,111,168,0.75)','rgba(168,212,245,0.70)','rgba(75,163,217,0.55)'];
+    const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    const dots = Array.from({ length: TOTAL_DOTS }, (_, i) => {
+        const el = document.createElement('div');
+        const scale = 1 - i * (0.7 / TOTAL_DOTS), size = DOT_SIZE * scale, color = COLORS[i % COLORS.length];
+        Object.assign(el.style, { position:'fixed', width:size+'px', height:size+'px', borderRadius:'50%',
+            background:color, pointerEvents:'none', zIndex:'9998', transform:'translate(-50%,-50%)',
+            transition:'opacity 0.3s', willChange:'left,top', boxShadow:`0 0 ${size*1.2}px ${color}` });
+        document.body.appendChild(el);
+        return { el, x: mouse.x, y: mouse.y };
+    });
+    function animate() {
+        dots[0].x += (mouse.x - dots[0].x) * EASE * 2.2;
+        dots[0].y += (mouse.y - dots[0].y) * EASE * 2.2;
+        for (let i = 1; i < TOTAL_DOTS; i++) {
+            dots[i].x += (dots[i-1].x - dots[i].x) * (EASE - i * 0.003);
+            dots[i].y += (dots[i-1].y - dots[i].y) * (EASE - i * 0.003);
+        }
+        dots.forEach(d => { d.el.style.left = d.x+'px'; d.el.style.top = d.y+'px'; });
+        requestAnimationFrame(animate);
+    }
+    animate();
+    document.addEventListener('mouseleave', () => dots.forEach(d => d.el.style.opacity = '0'));
+    document.addEventListener('mouseenter', () => dots.forEach(d => d.el.style.opacity = '1'));
+})();
+ 
 // ══════════════════════════════════════════
 //  KRONO — Alumno Script
 // ══════════════════════════════════════════
-
-// ── Base de datos SIMULADA por alumno (reemplazar con fetch() a tu BD) ──
-// TODO: GET /api/alumno?email=... para traer los datos reales
-const BD_ALUMNOS = {
-    'lucia.gomez@escuelasproa.edu.ar': {
-        nombre:    'Lucía Gómez',
-        curso:     '4° Año',
-        division:  'B',
-        legajo:    'A-1042',
-        avatar:    null,
-        clasesSubidas: 7,
-        faltas: [
-            { fecha: '2025-03-12', mes: 'Mar', tipo: 'injust',  motivo: 'Sin justificación presentada',      hora: null },
-            { fecha: '2025-03-28', mes: 'Mar', tipo: 'tarde',   motivo: 'Transporte demorado',               hora: '8:25' },
-            { fecha: '2025-04-05', mes: 'Abr', tipo: 'just',    motivo: 'Turno médico (certificado)',        hora: null },
-            { fecha: '2025-04-18', mes: 'Abr', tipo: 'injust',  motivo: 'Sin justificación presentada',      hora: null },
-            { fecha: '2025-05-07', mes: 'May', tipo: 'just',    motivo: 'Enfermedad (certificado médico)',   hora: null },
-            { fecha: '2025-05-07', mes: 'May', tipo: 'just',    motivo: 'Enfermedad (certificado médico)',   hora: null },
-            { fecha: '2025-06-03', mes: 'Jun', tipo: 'tarde',   motivo: 'Lluvia intensa',                   hora: '8:40' },
-            { fecha: '2025-07-22', mes: 'Jul', tipo: 'injust',  motivo: 'Sin justificación presentada',     hora: null },
-            { fecha: '2025-08-14', mes: 'Ago', tipo: 'just',    motivo: 'Paro de transporte (constancia)',  hora: null },
-            { fecha: '2025-09-09', mes: 'Sep', tipo: 'just',    motivo: 'Acto escolar — representación',    hora: null },
-            { fecha: '2025-10-21', mes: 'Oct', tipo: 'injust',  motivo: 'Sin justificación presentada',     hora: null },
-        ]
-    },
-    'pedro.ramirez@escuelasproa.edu.ar': {
-        nombre:    'Pedro Ramírez',
-        curso:     '2° Año',
-        division:  'A',
-        legajo:    'A-0876',
-        avatar:    null,
-        clasesSubidas: 4,
-        faltas: [
-            { fecha: '2025-03-20', mes: 'Mar', tipo: 'just',   motivo: 'Turno odontológico',                hora: null },
-            { fecha: '2025-04-10', mes: 'Abr', tipo: 'injust', motivo: 'Sin justificación presentada',     hora: null },
-            { fecha: '2025-05-15', mes: 'May', tipo: 'tarde',  motivo: 'Problemas con el transporte',      hora: '8:15' },
-            { fecha: '2025-06-18', mes: 'Jun', tipo: 'injust', motivo: 'Sin justificación presentada',     hora: null },
-            { fecha: '2025-08-05', mes: 'Ago', tipo: 'just',   motivo: 'Enfermedad (certificado médico)',  hora: null },
-        ]
-    },
-    'demo@escuelasproa.edu.ar': {
-        nombre:    'Estudiante Demo',
-        curso:     '3° Año',
-        division:  'C',
-        legajo:    'A-0001',
-        avatar:    null,
-        clasesSubidas: 6,
-        faltas: [
-            { fecha: '2025-03-12', mes: 'Mar', tipo: 'injust', motivo: 'Sin justificación presentada',      hora: null },
-            { fecha: '2025-04-05', mes: 'Abr', tipo: 'just',   motivo: 'Turno médico (certificado)',        hora: null },
-            { fecha: '2025-04-22', mes: 'Abr', tipo: 'tarde',  motivo: 'Transporte demorado',               hora: '8:30' },
-            { fecha: '2025-05-08', mes: 'May', tipo: 'just',   motivo: 'Enfermedad (certificado médico)',   hora: null },
-            { fecha: '2025-06-03', mes: 'Jun', tipo: 'injust', motivo: 'Sin justificación presentada',      hora: null },
-            { fecha: '2025-07-25', mes: 'Jul', tipo: 'tarde',  motivo: 'Lluvia / tránsito',                hora: '8:50' },
-            { fecha: '2025-08-14', mes: 'Ago', tipo: 'just',   motivo: 'Paro de transporte',               hora: null },
-            { fecha: '2025-09-09', mes: 'Sep', tipo: 'just',   motivo: 'Representación institucional',     hora: null },
-            { fecha: '2025-10-01', mes: 'Oct', tipo: 'injust', motivo: 'Sin justificación presentada',     hora: null },
-            { fecha: '2025-11-11', mes: 'Nov', tipo: 'tarde',  motivo: 'Problemas de salud',               hora: '9:05' },
-        ]
-    }
+ 
+const MESES = ['Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+ 
+// Objeto global que se llena con datos reales del backend
+let DATOS_ALUMNO = {
+    gmail: '',
+    nombre: '',
+    apellido: '',
+    anio: null,
+    faltasJustificadas:   [0,0,0,0,0,0,0,0,0,0],
+    faltasInjustificadas: [0,0,0,0,0,0,0,0,0,0],
+    clasesSubidas: 0
 };
-
-const MESES_ORDEN = ['Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
-const MESES_NOMBRE = {
-    Mar:'Marzo', Abr:'Abril', May:'Mayo', Jun:'Junio',
-    Jul:'Julio', Ago:'Agosto', Sep:'Septiembre', Oct:'Octubre',
-    Nov:'Noviembre', Dic:'Diciembre'
-};
-
-let alumnoActual = null; // datos del alumno logueado
-
-// ══════════════════════════════════════════
-//  LOGIN — GOOGLE (simulado)
-// ══════════════════════════════════════════
-
-let googleStep = 1; // 1=email, 2=password
-
-function iniciarLoginGoogle() {
-    googleStep = 1;
-    document.getElementById('google-email').value = '';
-    document.getElementById('google-pass').value  = '';
-    document.getElementById('google-pass-wrap').style.display = 'none';
-    document.getElementById('google-error').style.display     = 'none';
-    document.getElementById('btn-google-next').textContent    = 'Siguiente';
-    document.getElementById('modal-google').style.display     = 'flex';
-    setTimeout(() => document.getElementById('google-email').focus(), 100);
-}
-
-function cerrarModalGoogle(e) {
-    if (!e || e.target === document.getElementById('modal-google')) {
-        document.getElementById('modal-google').style.display = 'none';
-    }
-}
-
-function pasoGoogle() {
-    const errorEl = document.getElementById('google-error');
-    errorEl.style.display = 'none';
-
-    if (googleStep === 1) {
-        const email = document.getElementById('google-email').value.trim().toLowerCase();
-        if (!email.endsWith('@escuelasproa.edu.ar')) {
-            errorEl.style.display = 'block'; return;
-        }
-        // Pasar a paso contraseña
-        googleStep = 2;
-        document.getElementById('google-pass-wrap').style.display = 'block';
-        document.getElementById('btn-google-next').textContent    = 'Ingresar';
-        setTimeout(() => document.getElementById('google-pass').focus(), 80);
-
-    } else {
-        const email = document.getElementById('google-email').value.trim().toLowerCase();
-        const pass  = document.getElementById('google-pass').value;
-        if (pass.length < 4) {
-            errorEl.innerHTML = 'Ingresá tu contraseña correctamente.';
-            errorEl.style.display = 'block'; return;
-        }
-        document.getElementById('modal-google').style.display = 'none';
-        activarPanel(email);
-    }
-}
-
-// ══════════════════════════════════════════
-//  LOGIN — EMAIL MANUAL
-// ══════════════════════════════════════════
-
-function togglePassword() {
-    const inp = document.getElementById('password-input');
-    const btn = document.getElementById('toggle-pw-btn');
-    if (inp.type === 'password') { inp.type = 'text'; btn.textContent = '🙈'; }
-    else                         { inp.type = 'password'; btn.textContent = '👁'; }
-}
-
+ 
+// email temporal entre paso 1 y paso 2
+let emailPendiente = '';
+ 
+// ── PASO 1: solicitar OTP ──────────────────────────────────────
 function verificarLogin() {
     const email = document.getElementById('email-input').value.trim().toLowerCase();
-    const pass  = document.getElementById('password-input').value;
     const error = document.getElementById('login-error');
-
-    if (!email.endsWith('@escuelasproa.edu.ar') || pass.length < 4) {
-        error.style.display = 'block'; return;
+    const btn   = document.querySelector('.btn-login');
+ 
+    if (!email.endsWith('@escuelasproa.edu.ar')) {
+        error.textContent = 'Usá tu correo @escuelasproa.edu.ar';
+        error.style.display = 'block';
+        return;
     }
+ 
     error.style.display = 'none';
-    activarPanel(email);
+    btn.textContent = 'Enviando código...';
+    btn.disabled = true;
+ 
+    fetch('http://127.0.0.1:5000/solicitar-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+    })
+    .then(res => res.json())
+    .then(data => {
+        btn.textContent = 'Ingresar';
+        btn.disabled = false;
+        if (data.error) {
+            error.textContent = data.error;
+            error.style.display = 'block';
+            return;
+        }
+        emailPendiente = email;
+        mostrarPantallaOTP(email);
+    })
+    .catch(() => {
+        btn.textContent = 'Ingresar';
+        btn.disabled = false;
+        error.textContent = 'No se pudo conectar con el servidor.';
+        error.style.display = 'block';
+    });
 }
-
-// ══════════════════════════════════════════
-//  ACTIVAR PANEL
-// ══════════════════════════════════════════
-
-function activarPanel(email) {
-    sessionStorage.setItem('alumno_email', email);
-
-    // Buscar datos en la BD simulada; si no existe, crear datos vacíos
-    alumnoActual = BD_ALUMNOS[email] || {
-        nombre: email.split('@')[0].replace('.', ' '),
-        curso: '—', division: '—', legajo: '—',
-        clasesSubidas: 0, avatar: null, faltas: []
-    };
-
-    // UI
-    document.getElementById('login-screen').style.display  = 'none';
-    document.getElementById('panel-screen').style.display  = 'block';
-
-    // Nombre e iniciales
-    const partes   = alumnoActual.nombre.split(' ');
-    const iniciales = (partes[0]?.[0] || '') + (partes[1]?.[0] || '');
-    const avatarEl = document.getElementById('avatar-circle');
-    avatarEl.textContent = iniciales.toUpperCase();
-
-    document.getElementById('nombre-display').textContent  = alumnoActual.nombre;
-    document.getElementById('bienvenida-texto').textContent = email;
-
+ 
+// ── Pantalla de ingreso de código ─────────────────────────────
+function mostrarPantallaOTP(email) {
+    document.getElementById('login-screen').innerHTML = `
+        <h1 class="section-title-alumno">Revisá tu correo</h1>
+        <p class="subtitle-alumno">Enviamos un código de 6 dígitos a<br><strong>${email}</strong></p>
+        <div class="login-card">
+            <div class="input-icon-wrap">
+                <span class="input-icon">🔑</span>
+                <input type="text" id="otp-input" placeholder="Ingresá el código"
+                       class="login-input" maxlength="6" inputmode="numeric"
+                       style="letter-spacing:0.3em;font-size:1.2rem;text-align:center;">
+            </div>
+            <p id="otp-error" class="login-error" style="display:none;"></p>
+            <button class="btn-login" onclick="verificarOTP()">Verificar</button>
+            <button onclick="volverLogin()"
+                    style="background:none;border:none;color:var(--ink-muted);
+                           font-size:0.88rem;cursor:pointer;margin-top:4px;
+                           text-decoration:underline;">
+                ← Usar otro correo
+            </button>
+        </div>
+        <p style="font-size:0.82rem;color:var(--ink-muted);margin-top:1.2rem;font-style:italic;">
+            ⏱ El código expira en 5 minutos
+        </p>
+    `;
+    setTimeout(() => {
+        const inp = document.getElementById('otp-input');
+        if (inp) {
+            inp.focus();
+            inp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarOTP(); });
+        }
+    }, 50);
+}
+ 
+// ── PASO 2: verificar OTP ─────────────────────────────────────
+function verificarOTP() {
+    const codigo = (document.getElementById('otp-input')?.value || '').trim();
+    const error  = document.getElementById('otp-error');
+    const btn    = document.querySelector('.btn-login');
+ 
+    if (codigo.length !== 6) {
+        error.textContent = 'El código tiene 6 dígitos.';
+        error.style.display = 'block';
+        return;
+    }
+ 
+    error.style.display = 'none';
+    btn.textContent = 'Verificando...';
+    btn.disabled = true;
+ 
+    fetch('http://127.0.0.1:5000/verificar-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailPendiente, codigo })
+    })
+    .then(res => res.json())
+    .then(alumno => {
+        btn.textContent = 'Verificar';
+        btn.disabled = false;
+        if (alumno.error) {
+            error.textContent = alumno.error;
+            error.style.display = 'block';
+            return;
+        }
+        DATOS_ALUMNO.gmail    = emailPendiente;
+        DATOS_ALUMNO.nombre   = alumno.nombre;
+        DATOS_ALUMNO.apellido = alumno.apellido;
+        DATOS_ALUMNO.anio     = alumno.anio;
+ 
+        sessionStorage.setItem('alumno_email',    emailPendiente);
+        sessionStorage.setItem('alumno_nombre',   alumno.nombre);
+        sessionStorage.setItem('alumno_apellido', alumno.apellido);
+        sessionStorage.setItem('alumno_anio',     alumno.anio);
+        sessionStorage.setItem('alumno_id',       alumno.id_alumno || '');
+ 
+        mostrarPanel(alumno.nombre, alumno.apellido, alumno.anio);
+    })
+    .catch(() => {
+        btn.textContent = 'Verificar';
+        btn.disabled = false;
+        error.textContent = 'Error de conexión. Intentá de nuevo.';
+        error.style.display = 'block';
+    });
+}
+ 
+function volverLogin() {
+    emailPendiente = '';
+    location.reload();
+}
+ 
+function mostrarPanel(nombre, apellido, anio) {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('panel-screen').style.display = 'block';
+ 
+    // Iniciales para el avatar
+    const iniciales = (nombre[0] || '') + (apellido[0] || '');
+    document.getElementById('avatar-circle').textContent        = iniciales.toUpperCase();
+    document.getElementById('nombre-display').textContent       = `${nombre} ${apellido}`;
+    document.getElementById('bienvenida-texto').textContent     = `¡Hola! Aquí están tus estadísticas 👋`;
+ 
     // Info card
-    document.getElementById('info-curso').textContent    = alumnoActual.curso;
-    document.getElementById('info-division').textContent = alumnoActual.division;
-    document.getElementById('info-legajo').textContent   = alumnoActual.legajo;
-
+    document.getElementById('info-curso').textContent    = `${anio}°`;
+    document.getElementById('info-division').textContent = '—';   // agregar columna en BD si la tenés
+    document.getElementById('info-legajo').textContent   = '—';   // ídem
+ 
     iniciarEstadisticas();
+    cargarEvidencias();
+    cargarMisAvisos();
+}
+ 
+// ── Avisos del preceptor ───────────────────────────────────────
+function cargarMisAvisos() {
+    const email = sessionStorage.getItem('alumno_email');
+    if (!email) return;
+
+    fetch(`http://127.0.0.1:5000/mis-avisos/${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(avisos => {
+            const section = document.getElementById('avisos-alumno-section');
+            const lista   = document.getElementById('avisos-alumno-lista');
+            if (!section || !lista) return;
+
+            if (!avisos.length) {
+                section.style.display = 'none';
+                return;
+            }
+
+            section.style.display = 'block';
+            lista.innerHTML = avisos.map(av => `
+                <div class="aviso-alumno-item" id="aviso-${av.id}">
+                    <div class="aviso-alumno-info">
+                        <span class="aviso-alumno-fecha">📅 ${av.fecha} · ⏰ ${av.hora}</span>
+                        <p class="aviso-alumno-motivo">${av.motivo}</p>
+                    </div>
+                    <button class="btn-anotado" onclick="marcarAnotado(${av.id})">
+                        ✓ Me anoté
+                    </button>
+                </div>
+            `).join('');
+        })
+        .catch(err => console.error('Error cargando avisos:', err));
 }
 
-function cerrarSesion() {
-    sessionStorage.removeItem('alumno_email');
-    alumnoActual = null;
+function marcarAnotado(id) {
+    fetch(`http://127.0.0.1:5000/avisos/anotado/${id}`, { method: 'POST' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const el = document.getElementById(`aviso-${id}`);
+                if (el) {
+                    el.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+                    el.style.opacity = '0';
+                    el.style.transform = 'translateX(20px)';
+                    setTimeout(() => {
+                        el.remove();
+                        // Si no quedan avisos, ocultar la sección
+                        const lista = document.getElementById('avisos-alumno-lista');
+                        if (lista && !lista.children.length) {
+                            document.getElementById('avisos-alumno-section').style.display = 'none';
+                        }
+                    }, 400);
+                }
+            }
+        })
+        .catch(err => console.error('Error al marcar anotado:', err));
+}
+
+
+    sessionStorage.clear();
     document.getElementById('panel-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'block';
-    document.getElementById('email-input').value    = '';
-    document.getElementById('password-input').value = '';
+    document.getElementById('email-input').value = '';
     if (window._chartFaltas)    { window._chartFaltas.destroy();    window._chartFaltas    = null; }
     if (window._chartBeneficio) { window._chartBeneficio.destroy(); window._chartBeneficio = null; }
-}
+ 
+// ── DOMContentLoaded ───────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const inp = document.getElementById('email-input');
+    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarLogin(); });
 
+    const tarjInp = document.getElementById('tarjeta-input');
+    if (tarjInp) tarjInp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarTarjeta(); });
+ 
+    // Restaurar sesión si ya estaba logueado
+    const emailGuardado   = sessionStorage.getItem('alumno_email');
+    const nombreGuardado  = sessionStorage.getItem('alumno_nombre');
+    const apellidoGuardado= sessionStorage.getItem('alumno_apellido');
+    const anioGuardado    = sessionStorage.getItem('alumno_anio');
+ 
+    if (emailGuardado && nombreGuardado) {
+        DATOS_ALUMNO.gmail    = emailGuardado;       // ← fix: gmail faltaba
+        DATOS_ALUMNO.nombre   = nombreGuardado;
+        DATOS_ALUMNO.apellido = apellidoGuardado;
+        DATOS_ALUMNO.anio     = parseInt(anioGuardado);
+        mostrarPanel(nombreGuardado, apellidoGuardado, anioGuardado);
+    }
+ 
+    // Listeners de archivos
+    const archivoInput = document.getElementById('motivo-archivo');
+    if (archivoInput) archivoInput.addEventListener('change', () => {
+        document.getElementById('nombre-archivo').textContent = archivoInput.files[0]?.name || '';
+    });
+ 
+    const fotoInput = document.getElementById('foto-input');
+    if (fotoInput) fotoInput.addEventListener('change', () => {
+        const file = fotoInput.files[0];
+        if (!file) return;
+        document.getElementById('nombre-foto').textContent = file.name;
+        const reader = new FileReader();
+        reader.onload = e => {
+            document.getElementById('foto-preview').src = e.target.result;
+            document.getElementById('foto-preview-wrap').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+    });
+});
+ 
 // ══════════════════════════════════════════
 //  ESTADÍSTICAS
 // ══════════════════════════════════════════
-
+ 
 function iniciarEstadisticas() {
-    if (!alumnoActual) return;
-    const d = alumnoActual;
-
-    // Contar por tipo
-    const totalJust   = d.faltas.filter(f => f.tipo === 'just').length;
-    const totalInjust = d.faltas.filter(f => f.tipo === 'injust').length;
-    const totalTarde  = d.faltas.filter(f => f.tipo === 'tarde').length;
-    const total       = totalJust + totalInjust + totalTarde;
+    const d = DATOS_ALUMNO;
+    const totalJust   = d.faltasJustificadas.reduce((a,b)  => a+b, 0);
+    const totalInjust = d.faltasInjustificadas.reduce((a,b) => a+b, 0);
+    const total       = totalJust + totalInjust;
     const fotos       = d.clasesSubidas;
-
-    // Resumen
+ 
     document.getElementById('stat-total').textContent  = total;
     document.getElementById('stat-injust').textContent = totalInjust;
     document.getElementById('stat-just').textContent   = totalJust;
     document.getElementById('stat-fotos').textContent  = fotos;
-
-    // % beneficio
+ 
+    // % beneficio: base 100, -10 por injust, +2 por foto
     const pct = Math.min(100, Math.max(0, 100 - totalInjust * 10 + fotos * 2));
+    window._kronoPCT = pct; // ← global para la tarjeta
     document.getElementById('pct-numero').textContent = pct + '%';
-
+ 
+    // Barras de factores
     const maxInjust = 10, maxFotos = 20;
     document.getElementById('barra-injust').style.width = Math.min(100, (totalInjust / maxInjust) * 100) + '%';
     document.getElementById('barra-fotos').style.width  = Math.min(100, (fotos / maxFotos) * 100) + '%';
-    document.getElementById('val-injust').textContent   = '−' + totalInjust;
-    document.getElementById('val-fotos').textContent    = '+' + fotos;
-
+    document.getElementById('val-injust').textContent = '−' + totalInjust;
+    document.getElementById('val-fotos').textContent  = '+' + fotos;
+ 
+    // Historial
+    const historial = document.getElementById('historial-lista');
+    if (historial) {
+        const eventos = [];
+        MESES.forEach((mes, i) => {
+            if (d.faltasJustificadas[i]   > 0) eventos.push(`<div class="hist-item just-item">✔ ${mes}: ${d.faltasJustificadas[i]} falta(s) justificada(s)</div>`);
+            if (d.faltasInjustificadas[i] > 0) eventos.push(`<div class="hist-item injust-item">✘ ${mes}: ${d.faltasInjustificadas[i]} falta(s) injustificada(s)</div>`);
+        });
+        historial.innerHTML = eventos.length
+            ? eventos.join('')
+            : '<p class="instruccion">Sin faltas registradas 🎉</p>';
+    }
+ 
+    // Chip de estado
     const chip = document.getElementById('estado-chip');
-    if (pct >= 80)      { chip.className = 'beneficio-estado estado-excelente'; chip.innerHTML = '✦ ¡Excelente! Tenés el máximo beneficio en cantina'; }
-    else if (pct >= 50) { chip.className = 'beneficio-estado estado-bueno';     chip.innerHTML = '◈ Buen rendimiento — seguí subiendo clases para mejorar'; }
-    else                { chip.className = 'beneficio-estado estado-riesgo';     chip.innerHTML = '⚠ Riesgo de perder el beneficio — justificá tus faltas'; }
-
-    // Agrupar faltas por mes para el gráfico
-    const justPorMes   = MESES_ORDEN.map(m => d.faltas.filter(f => f.mes === m && f.tipo === 'just').length);
-    const injustPorMes = MESES_ORDEN.map(m => d.faltas.filter(f => f.mes === m && f.tipo === 'injust').length);
-
-    // Tabla detalle
-    renderTablaFaltas('todos');
-
+    if (pct >= 80) {
+        chip.className = 'beneficio-estado estado-excelente';
+        chip.innerHTML = '✦ ¡Excelente! Tenés el máximo beneficio en cantina';
+    } else if (pct >= 50) {
+        chip.className = 'beneficio-estado estado-bueno';
+        chip.innerHTML = '◈ Buen rendimiento — seguí subiendo clases para mejorar';
+    } else {
+        chip.className = 'beneficio-estado estado-riesgo';
+        chip.innerHTML = '⚠ Riesgo de perder el beneficio — justificá tus faltas';
+    }
+ 
     setTimeout(() => {
-        dibujarGraficoFaltas(justPorMes, injustPorMes);
+        dibujarGraficoFaltas(d, totalJust, totalInjust);
         dibujarGraficoBeneficio(pct);
     }, 80);
 }
-
-// ── Tabla detalle de faltas ──
-function renderTablaFaltas(filtroMes) {
-    const wrap = document.getElementById('tabla-faltas-wrap');
-    if (!alumnoActual || alumnoActual.faltas.length === 0) {
-        wrap.innerHTML = '<p class="tabla-empty">Sin inasistencias registradas 🎉</p>'; return;
-    }
-
-    // Agrupar por mes
-    const grupos = {};
-    alumnoActual.faltas.forEach(f => {
-        if (filtroMes !== 'todos' && f.mes !== filtroMes) return;
-        if (!grupos[f.mes]) grupos[f.mes] = [];
-        grupos[f.mes].push(f);
-    });
-
-    const mesesPresentes = MESES_ORDEN.filter(m => grupos[m]);
-
-    if (mesesPresentes.length === 0) {
-        wrap.innerHTML = '<p class="tabla-empty">No hay inasistencias para este mes.</p>'; return;
-    }
-
-    let html = '<table class="tabla-faltas"><thead><tr><th>Fecha</th><th>Tipo</th><th>Motivo</th><th>Hora llegada</th></tr></thead><tbody>';
-
-    mesesPresentes.forEach(mes => {
-        html += `<tr><td colspan="4" class="falta-mes-sep">${MESES_NOMBRE[mes]}</td></tr>`;
-        grupos[mes].forEach(f => {
-            const fecha  = formatearFecha(f.fecha);
-            const badge  = f.tipo === 'just'   ? '<span class="badge-tipo badge-just">Justificada</span>'
-                         : f.tipo === 'injust' ? '<span class="badge-tipo badge-injust">Injustificada</span>'
-                                               : '<span class="badge-tipo badge-tarde">Tardanza</span>';
-            const hora   = f.hora ? `<strong>${f.hora}</strong>` : '<span style="color:var(--ink-muted)">—</span>';
-            html += `<tr><td>${fecha}</td><td>${badge}</td><td>${f.motivo}</td><td>${hora}</td></tr>`;
-        });
-    });
-
-    html += '</tbody></table>';
-    wrap.innerHTML = html;
-}
-
-function filtrarFaltas() {
-    const val = document.getElementById('filtro-mes').value;
-    renderTablaFaltas(val);
-}
-
-function formatearFecha(iso) {
-    const [y, m, d] = iso.split('-');
-    return `${d}/${m}/${y}`;
-}
-
-// ── Gráfico de barras ──
-function dibujarGraficoFaltas(justPorMes, injustPorMes) {
+ 
+function dibujarGraficoFaltas(d, totalJust, totalInjust) {
     if (window._chartFaltas) window._chartFaltas.destroy();
     const ctx = document.getElementById('grafico-faltas');
     if (!ctx) return;
-
+ 
     window._chartFaltas = new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: MESES_ORDEN,
+            labels: MESES,
             datasets: [
                 {
                     label: 'Justificadas',
-                    data: justPorMes,
+                    data: d.faltasJustificadas,
                     backgroundColor: 'rgba(45,138,94,0.65)',
                     borderColor: 'rgba(45,138,94,0.9)',
                     borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
                 },
                 {
                     label: 'Injustificadas',
-                    data: injustPorMes,
+                    data: d.faltasInjustificadas,
                     backgroundColor: 'rgba(200,80,80,0.60)',
                     borderColor: 'rgba(200,80,80,0.85)',
                     borderWidth: 1.5, borderRadius: 6, borderSkipped: false,
@@ -326,7 +451,7 @@ function dibujarGraficoFaltas(justPorMes, injustPorMes) {
                 x: { grid: { display: false }, ticks: { font: { family: 'DM Sans', size: 12 }, color: '#4a5568' } },
                 y: {
                     beginAtZero: true,
-                    max: Math.max(4, Math.max(...justPorMes, ...injustPorMes) + 1),
+                    max: Math.max(4, Math.max(...d.faltasJustificadas, ...d.faltasInjustificadas) + 1),
                     ticks: { stepSize: 1, font: { family: 'DM Sans', size: 11 }, color: '#4a5568' },
                     grid: { color: 'rgba(168,212,245,0.2)' }
                 }
@@ -334,22 +459,26 @@ function dibujarGraficoFaltas(justPorMes, injustPorMes) {
         }
     });
 }
-
-// ── Gráfico de dónut ──
+ 
 function dibujarGraficoBeneficio(pct) {
     if (window._chartBeneficio) window._chartBeneficio.destroy();
     const ctx = document.getElementById('grafico-beneficio');
     if (!ctx) return;
-
+ 
     const colorPct = pct >= 80 ? 'rgba(45,138,94,0.85)' : pct >= 50 ? 'rgba(75,163,217,0.85)' : 'rgba(200,80,80,0.85)';
-
+ 
+    const esCien = pct >= 100;
     window._chartBeneficio = new Chart(ctx, {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: [pct, 100 - pct],
-                backgroundColor: [colorPct, 'rgba(200,200,200,0.18)'],
-                borderWidth: 0, borderRadius: [8, 0], hoverOffset: 0
+                data: esCien ? [100] : [pct, 100 - pct],
+                backgroundColor: esCien
+                    ? [colorPct]
+                    : [colorPct, 'rgba(200,200,200,0.18)'],
+                borderWidth: 0,
+                borderRadius: esCien ? 0 : [8, 0],
+                hoverOffset: 0
             }]
         },
         options: {
@@ -359,112 +488,271 @@ function dibujarGraficoBeneficio(pct) {
         }
     });
 }
-
+ 
 // ══════════════════════════════════════════
 //  ACCIONES
 // ══════════════════════════════════════════
-
+ 
 function toggleFormTarde() {
     const f = document.getElementById('form-tarde');
     f.style.display = f.style.display === 'none' ? 'flex' : 'none';
 }
-
+ 
 function enviarTarde() {
-    const texto = document.getElementById('motivo-texto').value.trim();
+    const texto   = document.getElementById('motivo-texto').value.trim();
+    const archivo = document.getElementById('motivo-archivo').files[0];
     if (!texto) { alert('Por favor escribí el motivo antes de enviar.'); return; }
-    // TODO: fetch POST a tu endpoint PHP con FormData
-    console.log('Enviando motivo de tardanza:', texto);
-    document.getElementById('tarde-ok').style.display = 'block';
-    document.getElementById('motivo-texto').value = '';
-    document.getElementById('nombre-archivo').textContent = '';
-    document.getElementById('motivo-archivo').value = '';
-    setTimeout(() => {
-        document.getElementById('tarde-ok').style.display = 'none';
-        document.getElementById('form-tarde').style.display = 'none';
-    }, 3000);
+ 
+    const btn = document.querySelector('#card-tarde .btn-enviar-accion');
+    btn.disabled = true;
+    btn.textContent = 'Enviando...';
+ 
+    const fd = new FormData();
+    fd.append('gmail',    DATOS_ALUMNO.gmail    || sessionStorage.getItem('alumno_email') || '');
+    fd.append('nombre',   DATOS_ALUMNO.nombre   || '');
+    fd.append('apellido', DATOS_ALUMNO.apellido || '');
+    fd.append('motivo',   texto);
+    if (archivo) fd.append('certificado', archivo);
+ 
+    fetch('http://127.0.0.1:5000/motivo-tardanza', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            document.getElementById('tarde-ok').style.display = 'block';
+            document.getElementById('motivo-texto').value = '';
+            document.getElementById('nombre-archivo').textContent = '';
+            document.getElementById('motivo-archivo').value = '';
+            btn.disabled = false; btn.textContent = 'Enviar motivo';
+            setTimeout(() => {
+                document.getElementById('tarde-ok').style.display = 'none';
+                document.getElementById('form-tarde').style.display = 'none';
+            }, 3000);
+        })
+        .catch(err => {
+            alert('Error al enviar: ' + err.message);
+            btn.disabled = false; btn.textContent = 'Enviar motivo';
+        });
 }
-
+ 
 function toggleFormFoto() {
     const f = document.getElementById('form-foto');
     f.style.display = f.style.display === 'none' ? 'flex' : 'none';
 }
-
+ 
 function enviarFoto() {
-    const foto = document.getElementById('foto-input').files[0];
-    const desc = document.getElementById('foto-desc').value.trim();
-    if (!foto) { alert('Elegí una foto primero.'); return; }
-    // TODO: fetch POST a tu endpoint PHP con FormData
-    console.log('Enviando foto de clase:', foto.name, '| Desc:', desc);
-
-    alumnoActual.clasesSubidas++;
-    iniciarEstadisticas();
-
-    document.getElementById('foto-ok').style.display = 'block';
-    document.getElementById('foto-desc').value = '';
-    document.getElementById('nombre-foto').textContent = '';
-    document.getElementById('foto-preview-wrap').style.display = 'none';
-    document.getElementById('foto-input').value = '';
-    setTimeout(() => {
-        document.getElementById('foto-ok').style.display = 'none';
-        document.getElementById('form-foto').style.display = 'none';
-    }, 3000);
+    const fotoFile = document.getElementById('foto-input').files[0];
+    const desc     = document.getElementById('foto-desc').value.trim();
+    if (!fotoFile) { alert('Elegí una foto primero.'); return; }
+ 
+    const btn = document.querySelector('#card-foto .btn-enviar-accion');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+ 
+    const fd = new FormData();
+    fd.append('gmail',       DATOS_ALUMNO.gmail    || sessionStorage.getItem('alumno_email') || '');
+    fd.append('nombre',      DATOS_ALUMNO.nombre   || '');
+    fd.append('apellido',    DATOS_ALUMNO.apellido || '');
+    fd.append('descripcion', desc);
+    fd.append('foto',        fotoFile);
+ 
+    fetch('http://127.0.0.1:5000/foto-clase', { method: 'POST', body: fd })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            DATOS_ALUMNO.clasesSubidas++;
+            iniciarEstadisticas();
+            cargarEvidencias(); // refrescar galería
+            document.getElementById('foto-ok').style.display = 'block';
+            document.getElementById('foto-desc').value = '';
+            document.getElementById('nombre-foto').textContent = '';
+            document.getElementById('foto-preview-wrap').style.display = 'none';
+            document.getElementById('foto-input').value = '';
+            btn.disabled = false; btn.textContent = 'Enviar foto';
+            setTimeout(() => {
+                document.getElementById('foto-ok').style.display = 'none';
+                document.getElementById('form-foto').style.display = 'none';
+            }, 3000);
+        })
+        .catch(err => {
+            alert('Error al enviar: ' + err.message);
+            btn.disabled = false; btn.textContent = 'Enviar foto';
+        });
 }
-
+ 
 // ══════════════════════════════════════════
-//  INIT
+//  GALERÍA DE EVIDENCIAS
 // ══════════════════════════════════════════
-
-document.addEventListener('DOMContentLoaded', () => {
-    // Enter en campos del login manual
-    ['email-input', 'password-input'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') verificarLogin(); });
-    });
-
-    // Enter en modal Google
-    ['google-email', 'google-pass'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') pasoGoogle(); });
-    });
-
-    // Sesión guardada
-    const emailGuardado = sessionStorage.getItem('alumno_email');
-    if (emailGuardado) activarPanel(emailGuardado);
-
-    // Listeners archivos
-    const archivoInput = document.getElementById('motivo-archivo');
-    if (archivoInput) archivoInput.addEventListener('change', () => {
-        document.getElementById('nombre-archivo').textContent = archivoInput.files[0]?.name || '';
-    });
-
-    const fotoInput = document.getElementById('foto-input');
-    if (fotoInput) fotoInput.addEventListener('change', () => {
-        const file = fotoInput.files[0];
-        if (!file) return;
-        document.getElementById('nombre-foto').textContent = file.name;
-        const reader = new FileReader();
-        reader.onload = e => {
-            document.getElementById('foto-preview').src = e.target.result;
-            document.getElementById('foto-preview-wrap').style.display = 'block';
-        };
-        reader.readAsDataURL(file);
-    });
-});
-
-/* ── Ocultar header al hacer scroll ── */
+function cargarEvidencias() {
+    const gmail = DATOS_ALUMNO.gmail || sessionStorage.getItem('alumno_email');
+    if (!gmail) return;
+    const galeria = document.getElementById('evidencias-galeria');
+    if (!galeria) return;
+ 
+    fetch(`http://127.0.0.1:5000/mis-fotos/${encodeURIComponent(gmail)}`)
+        .then(r => r.json())
+        .then(fotos => {
+            const seccion = document.getElementById('evidencias-seccion');
+            if (!fotos.length) {
+                seccion.style.display = 'none';
+                return;
+            }
+            seccion.style.display = 'block';
+            galeria.innerHTML = fotos.map(f => `
+                <div class="evidencia-carta">
+                    <img src="${f.url}" alt="${f.descripcion || 'Foto de clase'}" class="evidencia-img">
+                    <div class="evidencia-info">
+                        <span class="evidencia-desc">${f.descripcion || 'Sin descripción'}</span>
+                        <span class="evidencia-fecha">${f.fecha}</span>
+                    </div>
+                </div>
+            `).join('');
+        })
+        .catch(() => {});
+}
+ 
+// ── Ocultar sidebar al hacer scroll ───────────────────────────
 (function () {
-    const header = document.querySelector('.sidebar');
-    let ultimoScroll = 0, ticking = false;
-    window.addEventListener('scroll', () => {
+    // 1. Lógica del Scroll
+    const header = document.querySelector(".sidebar");
+    let ultimoScroll = 0;
+    let ticking = false;
+
+    window.addEventListener("scroll", () => {
         if (!ticking) {
-            requestAnimationFrame(() => {
-                const s = window.scrollY;
-                if (s <= 10)                  header.classList.remove('header-oculto');
-                else if (s > ultimoScroll + 6) header.classList.add('header-oculto');
-                else if (s < ultimoScroll - 6) header.classList.remove('header-oculto');
-                ultimoScroll = s; ticking = false;
+            window.requestAnimationFrame(() => {
+                const scrollActual = window.scrollY;
+                
+                if (scrollActual <= 10) {
+                    header.classList.remove("header-oculto");
+                } else if (scrollActual > ultimoScroll + 6) {
+                    header.classList.add("header-oculto");
+                } else if (scrollActual < ultimoScroll - 6) {
+                    header.classList.remove("header-oculto");
+                }
+                
+                ultimoScroll = scrollActual;
+                ticking = false;
             });
             ticking = true;
         }
+    }); // <-- Aquí faltaba cerrar el evento de scroll
+
+})(); // Cerramos la IIFE correctament
+// ══════════════════════════════════════════
+//  LOGIN POR TARJETA RFID
+// ══════════════════════════════════════════
+function verificarTarjeta() {
+    const input   = document.getElementById('tarjeta-input').value.trim();
+    const errorEl = document.getElementById('tarjeta-error');
+    const btn     = document.querySelector('#tarjeta-input ~ * .btn-login') ||
+                    document.querySelectorAll('.login-col')[1]?.querySelector('.btn-login');
+
+    if (!input) {
+        errorEl.textContent = 'Ingresá tu nombre o ID de tarjeta.';
+        errorEl.style.display = 'block';
+        return;
+    }
+
+    errorEl.style.display = 'none';
+    if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
+
+    fetch('http://127.0.0.1:5000/login-tarjeta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identificador: input })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+        if (data.error) {
+            errorEl.textContent = data.error;
+            errorEl.style.display = 'block';
+            return;
+        }
+        // Login exitoso por tarjeta — misma lógica que OTP
+        DATOS_ALUMNO.gmail    = data.gmail;
+        DATOS_ALUMNO.nombre   = data.nombre;
+        DATOS_ALUMNO.apellido = data.apellido;
+        DATOS_ALUMNO.anio     = data.anio;
+
+        sessionStorage.setItem('alumno_email',    data.gmail);
+        sessionStorage.setItem('alumno_nombre',   data.nombre);
+        sessionStorage.setItem('alumno_apellido', data.apellido);
+        sessionStorage.setItem('alumno_anio',     data.anio);
+        sessionStorage.setItem('alumno_id',       data.id_alumno || '');
+
+        document.getElementById('login-screen').style.display = 'none';
+        mostrarPanel(data.nombre, data.apellido, data.anio);
+    })
+    .catch(() => {
+        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
+        errorEl.textContent = 'No se pudo conectar con el servidor.';
+        errorEl.style.display = 'block';
     });
-})();
+}
+
+e
+// ══════════════════════════════════════════════
+//  TARJETA DE BENEFICIO — modal con QR
+// ══════════════════════════════════════════════
+function abrirTarjeta() {
+    const modal = document.getElementById('tarjeta-modal');
+    if (!modal) return;
+
+    // Datos del alumno desde sessionStorage
+    const nombre   = sessionStorage.getItem('alumno_nombre')   || '';
+    const apellido = sessionStorage.getItem('alumno_apellido') || '';
+    const gmail    = sessionStorage.getItem('alumno_email')    || '';
+    const pct      = window._kronoPCT !== undefined ? window._kronoPCT : '—';
+
+    // Nombre completo
+    document.getElementById('tarjeta-nombre').textContent = `${apellido}, ${nombre}`;
+
+    // Porcentaje
+    document.getElementById('tarjeta-pct').textContent = pct + '%';
+
+    // QR — URL de evidencias del alumno (link directo a sus fotos)
+    const idAlumno = sessionStorage.getItem('alumno_id') || '';
+    const qrData   = `KRONO-${idAlumno}`;
+    // QR más grande para mejor lectura por el escáner
+    const qrUrl    = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=10&data=${encodeURIComponent(qrData)}`;
+    document.getElementById('tarjeta-qr').src = qrUrl;
+    // Guardar URL para la descarga
+    window._kronoQRUrl = qrUrl;
+    window._kronoQRData = qrData;
+
+    modal.style.display = 'flex';
+    setTimeout(() => modal.classList.add('modal-visible'), 10);
+}
+
+function cerrarTarjeta(e) {
+    const modal = document.getElementById('tarjeta-modal');
+    if (!modal) return;
+    if (e && e.target !== modal) return; // solo cierra si click en fondo
+    modal.classList.remove('modal-visible');
+    setTimeout(() => modal.style.display = 'none', 280);
+}
+
+// ══════════════════════════════════════════════
+//  DESCARGA DEL QR
+// ══════════════════════════════════════════════
+function descargarQR() {
+    const apellido = sessionStorage.getItem('alumno_apellido') || 'alumno';
+    const nombre   = sessionStorage.getItem('alumno_nombre')   || '';
+    const url      = window._kronoQRUrl;
+    if (!url) return;
+
+    // Fetch de la imagen y descarga como archivo
+    fetch(url)
+        .then(r => r.blob())
+        .then(blob => {
+            const link = document.createElement('a');
+            link.href     = URL.createObjectURL(blob);
+            link.download = `KRONO-QR-${apellido}-${nombre}.png`.replace(/\s+/g, '_');
+            link.click();
+            URL.revokeObjectURL(link.href);
+        })
+        .catch(() => {
+            // Fallback: abrir en nueva pestaña si el fetch falla
+            window.open(url, '_blank');
+        });
+}

@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRONO | Alumno</title>
+    <title>Krono | Alumno</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
     <link rel="stylesheet" href="alumno-style.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 </head>
@@ -17,12 +18,14 @@
                     <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
                 </a>
             </div>
-            <nav class="nav-icons">
+                        <nav class="nav-icons">
                 <a href="alumno.html" class="nav-item active">
-                    <img src="icono-alumno.png" alt="Alumno">
+                    <img src="icono-alumno.png" alt="Estudiantes">
+                    <span class="nav-label">Estudiantes</span>
                 </a>
                 <a href="preceptoria.html" class="nav-item">
                     <img src="icono-prece.png" alt="Preceptoría">
+                    <span class="nav-label">Preceptoría</span>
                 </a>
             </nav>
         </header>
@@ -34,39 +37,38 @@
                 <!-- ══════════ LOGIN ══════════ -->
                 <div id="login-screen">
                     <h1 class="section-title-alumno">¡Hola, estudiante!</h1>
-                    <p class="subtitle-alumno">Ingresá con tu cuenta institucional para continuar</p>
 
-                    <div class="login-card">
-                        <!-- Modo Google -->
-                        <div id="google-login-section">
-                            <button class="btn-google" onclick="iniciarLoginGoogle()">
-                                <svg class="google-icon" viewBox="0 0 48 48">
-                                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                                    <path fill="none" d="M0 0h48v48H0z"/>
-                                </svg>
-                                Continuar con Google
-                            </button>
+                    <div class="login-dual">
 
-                            <div class="divider-login"><span>o ingresá con tu correo</span></div>
+                        <!-- Columna izquierda: correo institucional -->
+                        <div class="login-col">
+                            <p class="login-col-titulo">Ingresá con tu correo institucional para continuar</p>
+                            <div class="login-card">
+                                <div class="input-icon-wrap">
+                                    <span class="input-icon">📩</span>
+                                    <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
+                                </div>
+                                <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> o verificá que esté registrado.</p>
+                                <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
+                            </div>
                         </div>
 
-                        <!-- Modo email/pass manual -->
-                        <div id="manual-login-section">
-                            <div class="input-icon-wrap">
-                                <span class="input-icon">✉️</span>
-                                <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
+                        <!-- Divisor -->
+                        <div class="login-divisor"><span>o</span></div>
+
+                        <!-- Columna derecha: tarjeta RFID -->
+                        <div class="login-col">
+                            <p class="login-col-titulo">Si ingresaste con tarjeta, colocá tu nombre / IP de tarjeta</p>
+                            <div class="login-card">
+                                <div class="input-icon-wrap">
+                                    <span class="input-icon">💳</span>
+                                    <input type="text" id="tarjeta-input" placeholder="Nombre o ID de tarjeta" class="login-input" autocomplete="off">
+                                </div>
+                                <p id="tarjeta-error" class="login-error" style="display:none;">Tarjeta no reconocida. Intentá de nuevo.</p>
+                                <button class="btn-login" onclick="verificarTarjeta()">Ingresar</button>
                             </div>
-                            <div class="input-icon-wrap">
-                                <span class="input-icon">🔒</span>
-                                <input type="password" id="password-input" placeholder="Contraseña" class="login-input">
-                                <button class="toggle-pw" onclick="togglePassword()" id="toggle-pw-btn">👁</button>
-                            </div>
-                            <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> o verificá tu contraseña.</p>
-                            <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
                         </div>
+
                     </div>
                 </div>
 
@@ -92,15 +94,15 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">División</span>
-                            <span class="info-valor" id="info-division">—</span>
+                            <span class="info-valor" id="info-division">A</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Legajo</span>
-                            <span class="info-valor" id="info-legajo">—</span>
+                            <span class="info-valor" id="info-legajo">N°</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Año lectivo</span>
-                            <span class="info-valor">2025</span>
+                            <span class="info-valor">2026</span>
                         </div>
                     </div>
 
@@ -108,73 +110,80 @@
                     <div class="stats-section">
                         <div class="stats-resumen-grid">
                             <div class="resumen-card">
-                                <span class="resumen-numero" id="stat-total">—</span>
-                                <span class="resumen-label">Faltas totales</span>
+                                <div class="resumen-card-inner">
+                                    <div class="resumen-front">
+                                        <span class="resumen-front-icon">📋</span>
+                                        <span class="resumen-label">Faltas totales</span>
+                                    </div>
+                                    <div class="resumen-back">
+                                        <span class="resumen-numero" id="stat-total">—</span>
+                                        <span class="resumen-back-label">Faltas totales</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero injust" id="stat-injust">—</span>
-                                <span class="resumen-label">Injustificadas</span>
+                                <div class="resumen-card-inner">
+                                    <div class="resumen-front">
+                                        <span class="resumen-front-icon">❌</span>
+                                        <span class="resumen-label">Injustificadas</span>
+                                    </div>
+                                    <div class="resumen-back">
+                                        <span class="resumen-numero injust" id="stat-injust">—</span>
+                                        <span class="resumen-back-label">Injustificadas</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero just" id="stat-just">—</span>
-                                <span class="resumen-label">Justificadas</span>
+                                <div class="resumen-card-inner">
+                                    <div class="resumen-front">
+                                        <span class="resumen-front-icon">✅</span>
+                                        <span class="resumen-label">Justificadas</span>
+                                    </div>
+                                    <div class="resumen-back">
+                                        <span class="resumen-numero just" id="stat-just">—</span>
+                                        <span class="resumen-back-label">Justificadas</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="resumen-card">
-                                <span class="resumen-numero fotos" id="stat-fotos">—</span>
-                                <span class="resumen-label">Clases subidas</span>
+                                <div class="resumen-card-inner">
+                                    <div class="resumen-front">
+                                        <span class="resumen-front-icon">📸</span>
+                                        <span class="resumen-label">Clases subidas</span>
+                                    </div>
+                                    <div class="resumen-back">
+                                        <span class="resumen-numero fotos" id="stat-fotos">—</span>
+                                        <span class="resumen-back-label">Clases subidas</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Gráfico faltas por mes -->
                         <div class="grafico-card">
-                            <div class="grafico-header">
-                                <div>
-                                    <h3 class="grafico-titulo">Faltas a lo largo del año</h3>
-                                    <p class="grafico-subtitulo">Justificadas vs. injustificadas por mes</p>
-                                </div>
-                                <div class="grafico-leyenda">
-                                    <span class="leyenda-item"><span class="dot just-dot"></span>Justificadas</span>
-                                    <span class="leyenda-item"><span class="dot injust-dot"></span>Injustificadas</span>
+                            <div class="grafico-titulo-row">
+                                <h3 class="grafico-titulo">Faltas por mes</h3>
+                                <div class="grafico-legend">
+                                    <span class="leg-dot just-dot"></span><span>Justificadas</span>
+                                    <span class="leg-dot injust-dot"></span><span>Injustificadas</span>
                                 </div>
                             </div>
-                            <div class="canvas-wrap">
+                            <div class="grafico-wrap">
                                 <canvas id="grafico-faltas"></canvas>
                             </div>
                         </div>
 
-                        <!-- Detalle de faltas por mes -->
-                        <div class="grafico-card">
-                            <div class="grafico-header">
-                                <div>
-                                    <h3 class="grafico-titulo">Detalle de inasistencias</h3>
-                                    <p class="grafico-subtitulo">Por mes — con motivo y hora de llegada</p>
-                                </div>
-                                <div class="filtro-mes-wrap">
-                                    <select id="filtro-mes" class="filtro-select" onchange="filtrarFaltas()">
-                                        <option value="todos">Todos los meses</option>
-                                        <option value="Mar">Marzo</option>
-                                        <option value="Abr">Abril</option>
-                                        <option value="May">Mayo</option>
-                                        <option value="Jun">Junio</option>
-                                        <option value="Jul">Julio</option>
-                                        <option value="Ago">Agosto</option>
-                                        <option value="Sep">Septiembre</option>
-                                        <option value="Oct">Octubre</option>
-                                        <option value="Nov">Noviembre</option>
-                                        <option value="Dic">Diciembre</option>
-                                    </select>
-                                </div>
-                            </div>
-                            <div id="tabla-faltas-wrap"></div>
+                        <!-- Historial -->
+                        <div class="historial-card">
+                            <h3 class="grafico-titulo">Historial detallado</h3>
+                            <div id="historial-lista" class="historial-lista"></div>
                         </div>
 
                         <!-- Gráfico beneficio -->
                         <div class="grafico-card beneficio-card">
-                            <div class="grafico-header">
-                                <div>
-                                    <h3 class="grafico-titulo">Mi % de beneficio</h3>
-                                    <p class="grafico-subtitulo">Basado en faltas injustificadas y clases subidas</p>
-                                </div>
+                            <div class="grafico-titulo-row">
+                                <h3 class="grafico-titulo">Índice de beneficio</h3>
+                                <p class="grafico-subtitulo">Basado en faltas injustificadas y clases subidas</p>
                             </div>
                             <div class="beneficio-layout">
                                 <div class="medidor-wrap">
@@ -210,6 +219,12 @@
                         </div>
                     </div>
 
+                    <!-- ══════════ AVISOS DEL PRECEPTOR ══════════ -->
+                    <div class="avisos-alumno-section" id="avisos-alumno-section" style="display:none;">
+                        <h3 class="grafico-titulo" style="margin-bottom:1rem;">🕐 Avisos del preceptor</h3>
+                        <div id="avisos-alumno-lista"></div>
+                    </div>
+
                     <!-- ══════════ ACCIONES ══════════ -->
                     <div class="acciones-grid">
 
@@ -240,9 +255,12 @@
                             <div class="accion-card-bg2"></div>
                             <div class="accion-card-bg1"></div>
                             <div class="accion-card" id="card-foto">
-                                <div class="accion-icon">📸</div>
+                                <div class="accion-card-header">
+                                    <div class="accion-icon">📸</div>
+                                    <button class="btn-tres-puntos" onclick="abrirTarjeta()" title="Ver tarjeta de beneficio">···</button>
+                                </div>
                                 <h3 class="accion-titulo">Foto de clase</h3>
-                                <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás.</p>
+                                <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás al día.</p>
                                 <button class="btn-accion" onclick="toggleFormFoto()">Subir foto</button>
                                 <div id="form-foto" class="accion-form" style="display:none;">
                                     <input type="file" id="foto-input" accept="image/*" capture="environment" class="accion-file">
@@ -266,35 +284,56 @@
         </main>
     </div>
 
-    <!-- Modal Google simulado -->
-    <div id="modal-google" class="modal-overlay" style="display:none;" onclick="cerrarModalGoogle(event)">
-        <div class="modal-google-card">
-            <div class="modal-google-logo">
-                <svg viewBox="0 0 48 48" width="36" height="36">
-                    <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-                    <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-                    <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-                    <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-                </svg>
-            </div>
-            <h2 class="modal-google-titulo">Iniciar sesión</h2>
-            <p class="modal-google-sub">Usá tu cuenta institucional</p>
+    <!-- ══════════ MODAL TARJETA DE BENEFICIO ══════════ -->
+    <style>
+        .btn-descargar-qr {
+            background: var(--sky-deep, #1a6fa8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 5px 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            transition: background 0.2s ease, transform 0.2s ease;
+            width: 100%;
+            margin-top: 4px;
+        }
+        .btn-descargar-qr:hover { background: #4ba3d9; transform: translateY(-1px); }
+        .tarjeta-qr-img { width: 140px !important; height: 140px !important; }
+    </style>
+    <div id="tarjeta-modal" class="tarjeta-modal-overlay" style="display:none;" onclick="cerrarTarjeta(event)">
+        <div class="tarjeta-modal-card">
 
-            <div class="modal-input-wrap">
-                <input type="email" id="google-email" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input modal-inp">
-            </div>
-            <div class="modal-input-wrap" id="google-pass-wrap" style="display:none;">
-                <input type="password" id="google-pass" placeholder="Contraseña" class="login-input modal-inp">
-            </div>
-
-            <p id="google-error" class="login-error" style="display:none; margin:6px 0;">Usá tu correo <strong>@escuelasproa.edu.ar</strong>.</p>
-
-            <div class="modal-google-btns">
-                <button class="btn-modal-cancel" onclick="cerrarModalGoogle()">Cancelar</button>
-                <button class="btn-modal-next" id="btn-google-next" onclick="pasoGoogle()">Siguiente</button>
+            <!-- Cabecera con tres puntos -->
+            <div class="tarjeta-header">
+                <div class="tarjeta-dots">
+                    <span></span><span></span><span></span>
+                </div>
+                <span class="tarjeta-label-top">Tarjeta KRONO</span>
+                <button class="tarjeta-cerrar" onclick="cerrarTarjeta({target:document.getElementById('tarjeta-modal')})">✕</button>
             </div>
 
-            <p class="modal-google-legal">Al continuar aceptás los <span class="link-fake">Términos del servicio</span> de KRONO</p>
+            <!-- Cuerpo -->
+            <div class="tarjeta-body">
+
+                <!-- Columna izquierda: QR + etiqueta -->
+                <div class="tarjeta-col-izq">
+                    <img id="tarjeta-qr" src="" alt="QR KRONO" class="tarjeta-qr-img">
+                    <span class="tarjeta-qr-label">Mi QR KRONO</span>
+                    <button class="btn-descargar-qr" onclick="descargarQR()" title="Descargar QR">⬇ Descargar</button>
+                </div>
+
+                <!-- Columna derecha: info -->
+                <div class="tarjeta-col-der">
+                    <p class="tarjeta-subtitulo">El/la estudiante</p>
+                    <p class="tarjeta-nombre-alumno" id="tarjeta-nombre">—</p>
+                    <p class="tarjeta-desc">Al entregar las tareas y no llegar tarde ni faltar, el/la estudiante tiene un descuento de:</p>
+                    <p class="tarjeta-pct" id="tarjeta-pct">—</p>
+                </div>
+
+            </div>
         </div>
     </div>
 

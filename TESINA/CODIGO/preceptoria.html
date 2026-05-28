@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>KRONO | Preceptoría</title>
-    <link rel="stylesheet" href="prece-style.css">
+    <title>Krono | Preceptoría</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="stylesheet" href="prece-style.css?v=3">
 </head>
 <body>
     <div class="bg-blur"></div>
@@ -18,10 +19,12 @@
             </div>
             <nav class="nav-icons">
                 <a href="alumno.html" class="nav-item">
-                    <img src="icono-alumno.png" alt="Alumno">
+                    <img src="icono-alumno.png" alt="Estudiantes">
+                    <span class="nav-label">Estudiantes</span>
                 </a>
                 <a href="preceptoria.html" class="nav-item active">
                     <img src="icono-prece.png" alt="Preceptoría">
+                    <span class="nav-label">Preceptoría</span>
                 </a>
             </nav>
         </header>
@@ -39,7 +42,7 @@
                         <div class="input-icon-wrap">
                             <span class="input-icon">🔒</span>
                             <input type="password" id="password-input" placeholder="Contraseña de preceptoría" class="login-input">
-                            <button class="toggle-pw" onclick="togglePw()" title="Mostrar/ocultar">👁</button>
+                            <button class="toggle-pw" onclick="togglePw()" title="Mostrar/ocultar">👀</button>
                         </div>
                         <p id="login-error" class="login-error" style="display:none;">Contraseña incorrecta. Intentá de nuevo.</p>
                         <button class="btn-login" onclick="verificarPassword()">Ingresar</button>
@@ -53,17 +56,146 @@
                         <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
                     </div>
 
-                    <div class="selector-cursos-grid">
-                        <button class="btn-curso" onclick="seleccionarCurso(1)">1° AÑO</button>
-                        <button class="btn-curso" onclick="seleccionarCurso(2)">2° AÑO</button>
-                        <button class="btn-curso" onclick="seleccionarCurso(3)">3° AÑO</button>
-                        <button class="btn-curso" onclick="seleccionarCurso(4)">4° AÑO</button>
-                        <button class="btn-curso" onclick="seleccionarCurso(5)">5° AÑO</button>
-                        <button class="btn-curso" onclick="seleccionarCurso(6)">6° AÑO</button>
+                    <!-- Pestañas -->
+                    <div class="tabs-prece">
+                        <button id="tab-alumnos"    class="tab-btn tab-activa" onclick="cambiarPestania('alumnos')">👥 Alumnos</button>
+                        <button id="tab-avisos"     class="tab-btn"            onclick="cambiarPestania('avisos')">🕐 Avisos</button>
+                        <button id="tab-motivos"    class="tab-btn"            onclick="cambiarPestania('motivos')">📋 Motivos</button>
+                        <button id="tab-evidencias" class="tab-btn"            onclick="cambiarPestania('evidencias')">📸 Evidencias</button>
+                        <button id="tab-ingresos"   class="tab-btn"            onclick="cambiarPestania('ingresos')">🚪 Ingresos</button>
                     </div>
 
-                    <div id="display-datos" class="display-area">
-                        <p class="instruccion">Seleccioná un curso para ver la lista de alumnos</p>
+                    <!-- Panel Alumnos -->
+                    <div id="panel-alumnos">
+                        <div class="selector-cursos-grid">
+                            <button class="btn-curso" onclick="seleccionarCurso(1)">1° AÑO</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(2)">2° AÑO</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(3)">3° AÑO</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(4)">4° AÑO</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(5)">5° AÑO</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(6)">6° AÑO</button>
+                        </div>
+                        <div id="display-datos" class="display-area">
+                            <p class="instruccion">Seleccioná un curso para ver la lista de alumnos</p>
+                        </div>
+                    </div>
+
+                    <!-- Panel Avisos -->
+                    <div id="panel-avisos" style="display:none;">
+                        <div class="aviso-form-wrap">
+
+                            <!-- Formulario nuevo aviso -->
+                            <div class="aviso-form-card">
+                                <h3 class="aviso-form-titulo">Nuevo aviso de llegada tarde</h3>
+
+                                <!-- Paso 1: Curso + Alumno -->
+                                <div class="aviso-campo">
+                                    <label class="aviso-label">Curso</label>
+                                    <div class="selector-cursos-mini" id="selector-aviso-curso">
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(1,this)">1° Año</button>
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(2,this)">2° Año</button>
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(3,this)">3° Año</button>
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(4,this)">4° Año</button>
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(5,this)">5° Año</button>
+    <button class="btn-curso-mini" onclick="seleccionarCursoAviso(6,this)">6° Año</button>
+</div>
+                                </div>
+
+                                <div class="aviso-campo" id="campo-alumno" style="display:none;">
+                                    <label class="aviso-label">Alumno</label>
+                                    <select id="select-alumno" class="aviso-select">
+                                        <option value="">Seleccioná un alumno...</option>
+                                    </select>
+                                </div>
+
+                                <!-- Paso 2: Fecha -->
+                                <div class="aviso-campo">
+                                    <label class="aviso-label">Fecha</label>
+                                    <input type="date" id="aviso-fecha" class="aviso-input">
+                                </div>
+
+                                <!-- Paso 3: Hora con carrusel -->
+                                <div class="aviso-campo">
+                                    <label class="aviso-label">Hora de llegada</label>
+                                    <div class="hora-carrusel-wrap">
+                                        <div class="hora-col">
+                                            <button class="hora-btn-nav" onclick="cambiarHora('h', 1)">▲</button>
+                                            <div class="hora-display" id="hora-h">07</div>
+                                            <button class="hora-btn-nav" onclick="cambiarHora('h', -1)">▼</button>
+                                        </div>
+                                        <span class="hora-sep">:</span>
+                                        <div class="hora-col">
+                                            <button class="hora-btn-nav" onclick="cambiarHora('m', 1)">▲</button>
+                                            <div class="hora-display" id="hora-m">00</div>
+                                            <button class="hora-btn-nav" onclick="cambiarHora('m', -1)">▼</button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Paso 4: Motivo -->
+                                <div class="aviso-campo">
+                                    <label class="aviso-label">Motivo</label>
+                                    <textarea id="aviso-motivo" class="aviso-textarea" placeholder="Ej: Turno médico, transporte, etc."></textarea>
+                                </div>
+
+                                <p id="aviso-form-error" class="login-error" style="display:none;"></p>
+                                <button class="btn-login" onclick="guardarAviso()">Guardar aviso</button>
+                                <p id="aviso-ok" class="accion-ok" style="display:none;">✓ Aviso guardado correctamente</p>
+                            </div>
+
+                            <!-- Lista de avisos existentes por curso -->
+                            <div class="aviso-lista-wrap">
+                                <h3 class="aviso-form-titulo">Avisos registrados</h3>
+                                <div class="selector-cursos-mini" id="selector-ver-avisos">
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(1,this)">1° Año</button>
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(2,this)">2° Año</button>
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(3,this)">3° Año</button>
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(4,this)">4° Año</button>
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(5,this)">5° Año</button>
+                                        <button class="btn-curso-mini" onclick="verAvisosCurso(6,this)">6° Año</button>
+                                </div>
+                                <div id="avisos-lista-contenedor" class="display-area" style="min-height:100px; margin-top:1rem;">
+                                    <p class="instruccion">Seleccioná un curso para ver los avisos</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Panel Motivos -->
+                    <div id="panel-motivos" style="display:none;">
+                        <div id="motivos-contenedor" class="display-area" style="flex-direction:column; align-items:stretch; min-height:200px;">
+                            <p class="instruccion">Cargando...</p>
+                        </div>
+                    </div>
+
+                    <!-- Panel Evidencias -->
+                    <div id="panel-evidencias" style="display:none;">
+                        <div id="evidencias-prece-contenedor" class="display-area" style="flex-direction:column; align-items:stretch; min-height:200px;">
+                            <p class="instruccion">Cargando...</p>
+                        </div>
+                    </div>
+
+                    <!-- Panel Ingresos -->
+                    <div id="panel-ingresos" style="display:none;">
+                        <div class="ingresos-wrap">
+                            <div class="ingresos-filtros">
+                                <div class="selector-cursos-mini" id="selector-ingresos-curso">
+                                    <button class="btn-curso-mini" onclick="verIngresos(1,this)">1° Año</button>
+                                    <button class="btn-curso-mini" onclick="verIngresos(2,this)">2° Año</button>
+                                    <button class="btn-curso-mini" onclick="verIngresos(3,this)">3° Año</button>
+                                    <button class="btn-curso-mini" onclick="verIngresos(4,this)">4° Año</button>
+                                    <button class="btn-curso-mini" onclick="verIngresos(5,this)">5° Año</button>
+                                    <button class="btn-curso-mini" onclick="verIngresos(6,this)">6° Año</button>
+                                </div>
+                                <div class="ingresos-fecha-wrap">
+                                    <label class="aviso-label">Fecha</label>
+                                    <input type="date" id="ingresos-fecha" class="aviso-input" onchange="refrescarIngresos()">
+                                </div>
+                            </div>
+                            <div id="ingresos-contenedor" class="display-area" style="flex-direction:column; align-items:stretch; min-height:200px; margin-top:1rem;">
+                                <p class="instruccion">Seleccioná un curso para ver los ingresos</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -71,6 +203,6 @@
         </main>
     </div>
 
-    <script src="prece-script.js"></script>
+    <script src="prece-script.js?v=3"></script>
 </body>
 </html>
