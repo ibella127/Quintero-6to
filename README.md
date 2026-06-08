@@ -25,11 +25,12 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 
 ## Funcionalidades
 
-- Registro de asistencia por huella dactilar
+- Registro de asistencia por código QR
 - Clasificación automática: presente / tarde / ausente
-- Registro de motivos, retiros y certificados
+- Registro de motivos, ingresos tardío y certificados
 - Panel de consulta para preceptores y alumnos
 - Sistema de beneficios por porcentaje de asistencia
+- Sistema de estadísticas para directivos
 
 ---
 
@@ -42,8 +43,8 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [x] Conexión Python ↔ SQL
 - [x] Panel de estadística - Directivos
 - [x] Integración código QR
+- [ ] Panel de registro de faltas
 - [ ] Sistema de beneficios
-- [x] Panel de reportes
 
 ---
 
