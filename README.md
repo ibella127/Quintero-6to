@@ -8,7 +8,7 @@ Sistema web de gestión de asistencias para PRoA, desarrollado por **Quintero & 
 
 ## ¿Qué es KRONO?
 
-KRONO automatiza el control de asistencia escolar. Cada estudiante registra su llegada mediante **huella dactilar** y el sistema guarda la hora exacta, clasificando automáticamente entre presente, tarde o ausente.
+KRONO automatiza el control de asistencia escolar. Cada estudiante registra su llegada mediante **código QR** y el sistema guarda la hora exacta, clasificando automáticamente entre presente, tarde o ausente.
 
 Tanto preceptores como alumnos pueden consultar el historial completo: faltas, tardanzas, motivos, retiros y certificados. Además, el sistema mide el porcentaje de asistencia de cada alumno para otorgar **beneficios en cantina**, promoviendo la presencialidad.
 
@@ -35,7 +35,7 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 
 ## Estado
 
-🔧 En desarrollo — Mayo 2026
+🔧 En desarrollo — Junio 2026
 
 - [x] Diseño de base de datos
 - [x] Interfaz web
