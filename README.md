@@ -40,9 +40,10 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [x] Diseño de base de datos
 - [x] Interfaz web
 - [x] Conexión Python ↔ SQL
-- [ ] Integración biométrica completa
+- [x] Panel de estadística - Directivos
+- [x] Integración código QR
 - [ ] Sistema de beneficios
-- [ ] Panel de reportes
+- [x] Panel de reportes
 
 ---
 
