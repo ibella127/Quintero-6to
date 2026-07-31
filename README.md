@@ -31,6 +31,7 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - Panel de consulta para preceptores y alumnos
 - Sistema de beneficios por porcentaje de asistencia
 - Sistema de estadísticas para directivos
+- Sistema de digitalización de documentación
 
 ---
 
@@ -41,12 +42,13 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [x] Diseño de base de datos
 - [x] Interfaz web
 - [x] Conexión Python ↔ SQL
-- [x] Panel de estadística - Directivos
+- [ ] Panel de estadística - Directivos
 - [x] Integración código QR
 - [ ] Panel de registro de faltas
 - [x] Sistema de beneficios
 - [ ] Sistema de ingreso
 - [ ] Chatbot
+- [x] Sistema de digitalización de documentación
 
 ---
 
