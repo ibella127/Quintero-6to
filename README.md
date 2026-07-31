@@ -17,10 +17,8 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 ## Stack
 
 - **Frontend:** HTML + CSS + JavaScript
-- **Backend:** Python
+- **Backend:** Python + Xampp
 - **Base de datos:** SQL
-- **Biometría:** Lector de huella dactilar
-
 ---
 
 ## Funcionalidades
@@ -53,3 +51,4 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 ---
 
 *Desarrollado para PRoA 🏫*
+*Para instalar descargue la carpeta zip con los archivos, es necesario contar con xampp instalado*
