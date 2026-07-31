@@ -44,7 +44,9 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [x] Panel de estadística - Directivos
 - [x] Integración código QR
 - [ ] Panel de registro de faltas
-- [ ] Sistema de beneficios
+- [x] Sistema de beneficios
+- [ ] Sistema de ingreso
+- [ ] Chatbot
 
 ---
 
