@@ -52,4 +52,10 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 *Desarrollado para PRoA 🏫*
 
 ---
-*Para instalar descargue el archivo zip y busque la carpeta CÓDIGO adentro de TESINA, es necesario contar con xampp instalado*
+*Para instalar descargue el archivo zip y busque la carpeta CÓDIGO adentro de TESINA*
+## Pasos
+- Asegurarse de tener todos los programas previamente aclarados instalados
+- Cargar la carpeta del proyecto a xampp
+- Abrir la carpeta en VSC para ejecutar el archivo app.py
+- Inicias xampp
+- En una pestaña de Google Chrome pones la url del localhost8080/carpeta/
