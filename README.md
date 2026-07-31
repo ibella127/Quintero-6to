@@ -47,8 +47,7 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [ ] Sistema de ingreso
 - [ ] Chatbot
 - [x] Sistema de digitalización de documentación
-
 ---
-
 *Desarrollado para PRoA 🏫*
-*Para instalar descargue la carpeta zip con los archivos, es necesario contar con xampp instalado*
+---
+*Para instalar descargue el archivo zip y busque la carpeta CÓDIGO adentro de TESINA, es necesario contar con xampp instalado*
