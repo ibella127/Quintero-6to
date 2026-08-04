@@ -8,7 +8,7 @@ Sistema web de gestión de asistencias para PRoA, desarrollado por **Quintero & 
 
 ## ¿Qué es KRONO?
 
-KRONO automatiza el control de asistencia escolar. Cada estudiante registra su llegada mediante **huella dactilar** y el sistema guarda la hora exacta, clasificando automáticamente entre presente, tarde o ausente.
+KRONO automatiza el control de asistencia escolar. Cada estudiante registra su llegada mediante **código QR** y el sistema guarda la hora exacta, clasificando automáticamente entre presente, tarde o ausente.
 
 Tanto preceptores como alumnos pueden consultar el historial completo: faltas, tardanzas, motivos, retiros y certificados. Además, el sistema mide el porcentaje de asistencia de cada alumno para otorgar **beneficios en cantina**, promoviendo la presencialidad.
 
@@ -17,33 +17,45 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 ## Stack
 
 - **Frontend:** HTML + CSS + JavaScript
-- **Backend:** Python
+- **Backend:** Python + Xampp
 - **Base de datos:** SQL
-- **Biometría:** Lector de huella dactilar
-
 ---
 
 ## Funcionalidades
 
-- Registro de asistencia por huella dactilar
+- Registro de asistencia por código QR
 - Clasificación automática: presente / tarde / ausente
-- Registro de motivos, retiros y certificados
+- Registro de motivos, ingresos tardío y certificados
 - Panel de consulta para preceptores y alumnos
 - Sistema de beneficios por porcentaje de asistencia
+- Sistema de estadísticas para directivos
+- Sistema de digitalización de documentación
 
 ---
 
 ## Estado
 
-🔧 En desarrollo — Mayo 2026
+🔧 En desarrollo — Junio 2026
 
 - [x] Diseño de base de datos
 - [x] Interfaz web
 - [x] Conexión Python ↔ SQL
-- [ ] Integración biométrica completa
-- [ ] Sistema de beneficios
-- [ ] Panel de reportes
-
+- [ ] Panel de estadística - Directivos
+- [x] Integración código QR
+- [ ] Panel de registro de faltas
+- [x] Sistema de beneficios
+- [ ] Sistema de ingreso
+- [ ] Chatbot
+- [x] Sistema de digitalización de documentación
 ---
 
 *Desarrollado para PRoA 🏫*
+
+---
+*Para instalar descargue el archivo zip y busque la carpeta CÓDIGO adentro de TESINA*
+## Pasos
+- Asegurarse de tener todos los programas previamente aclarados instalados
+- Cargar la carpeta del proyecto a xampp
+- Abrir la carpeta en VSC para ejecutar el archivo app.py
+- Inicias xampp
+- En una pestaña de Google Chrome pones la url del localhost8080/carpeta/
