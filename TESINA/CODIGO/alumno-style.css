@@ -154,6 +154,179 @@ body {
 
 .menu-title { display: none; }
 
+/* ══════════════════════════════════
+   ÍCONO DE NOTIFICACIONES
+══════════════════════════════════ */
+.notif-wrap {
+    position: relative;
+}
+
+.notif-btn {
+    position: relative;
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0;
+}
+
+.notif-icon {
+    width: 35px;
+    height: 35px;
+    object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
+}
+.notif-btn:hover .notif-icon { transform: scale(1.21); }
+
+/* Swap claro/oscuro (igual criterio que Modo_claro.png / Modo_oscuro.png) */
+.notif-icon-dark { display: none; }
+body.dark-mode .notif-icon-light { display: none; }
+body.dark-mode .notif-icon-dark { display: block; }
+
+/* Glow blanco/azulado cuando hay notificación nueva */
+.notif-btn.tiene-nuevas .notif-icon {
+    animation: notif-glow-pulse 1.8s ease-in-out infinite;
+}
+@keyframes notif-glow-pulse {
+    0%, 100% {
+        filter: drop-shadow(0 0 5px rgba(255,255,255,0.85)) drop-shadow(0 0 10px rgba(75,163,217,0.65));
+    }
+    50% {
+        filter: drop-shadow(0 0 11px rgba(255,255,255,1)) drop-shadow(0 0 20px rgba(75,163,217,0.95));
+    }
+}
+
+/* Punto azul de "hay algo nuevo" */
+.notif-dot {
+    position: absolute;
+    top: 1px;
+    right: 1px;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--sky-strong);
+    box-shadow: 0 0 6px rgba(75,163,217,0.9);
+    border: 2px solid var(--cream-pale);
+    display: none;
+}
+.notif-btn.tiene-nuevas .notif-dot { display: block; }
+body.dark-mode .notif-dot { border-color: #12222f; }
+
+/* Panel desplegable de notificaciones */
+.notif-panel {
+    position: absolute;
+    top: calc(100% + 14px);
+    right: 0;
+    width: 320px;
+    max-width: 88vw;
+    max-height: 420px;
+    background: rgba(255,255,255,0.92);
+    border: 1.5px solid rgba(75,163,217,0.25);
+    border-radius: 18px;
+    box-shadow: 0 12px 34px rgba(26,111,168,0.18);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    display: flex;
+    flex-direction: column;
+    opacity: 0;
+    transform: translateY(-8px) scale(0.97);
+    pointer-events: none;
+    transition: opacity 0.22s ease, transform 0.22s ease;
+    z-index: 200;
+    overflow: hidden;
+}
+.notif-panel.abierto {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+}
+
+.notif-panel-header {
+    padding: 0.9rem 1.1rem;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--sky-deep);
+    border-bottom: 1px solid rgba(75,163,217,0.18);
+}
+
+.notif-panel-lista {
+    padding: 0.7rem;
+    overflow-y: auto;
+}
+
+.notif-panel-categoria {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--sky-deep);
+    padding: 0.3rem 0.2rem;
+    margin-bottom: 0.3rem;
+}
+.notif-panel-categoria:not(:first-child) { margin-top: 0.4rem; }
+
+.notif-panel-item {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(75,163,217,0.22);
+    border-left: 3px solid var(--sky-strong);
+    border-radius: 12px;
+    padding: 0.7rem 0.85rem;
+    margin-bottom: 0.5rem;
+    text-align: left;
+}
+.notif-panel-item:last-child { margin-bottom: 0; }
+
+/* Mensaje privado (anuncios) vs Publicación (avisos) */
+.notif-panel-item-privado { border-left-color: var(--cream-dark, #c8bfa0); }
+.notif-panel-item-publicacion { border-left-color: var(--sky-strong); }
+
+.notif-panel-fecha {
+    font-size: 0.72rem;
+    color: var(--sky-deep);
+    font-weight: 500;
+}
+
+.notif-panel-motivo {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    line-height: 1.35;
+}
+
+.notif-panel-vacio {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    text-align: center;
+    padding: 1.2rem 0.5rem;
+}
+
+body.dark-mode .notif-panel-categoria { color: #7aa8c8; }
+
+body.dark-mode .notif-panel {
+    background: rgba(20,32,44,0.92);
+    border-color: rgba(75,163,217,0.3);
+}
+body.dark-mode .notif-panel-header {
+    color: #7aa8c8;
+    border-bottom-color: rgba(75,163,217,0.22);
+}
+body.dark-mode .notif-panel-item {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(75,163,217,0.28);
+}
+body.dark-mode .notif-panel-fecha { color: #7aa8c8; }
+body.dark-mode .notif-panel-motivo,
+body.dark-mode .notif-panel-vacio { color: #a9c8de; }
+
 /* ── CONTENIDO ── */
 .main-content { width: 100%; max-width: 900px; padding: 0 1.5rem; }
 .flex-center { display: flex; flex-direction: column; align-items: center; padding: 4rem 0 5rem; }
@@ -189,7 +362,7 @@ body {
     border: 1.5px solid rgba(75,163,217,0.25);
     border-radius: 22px;
     padding: 2.5rem 2rem;
-    max-width: 440px;
+    max-width: 350px;
     margin: 0 auto;
     display: flex;
     flex-direction: column;
@@ -238,6 +411,12 @@ body {
     transition: all 0.2s ease;
 }
 .btn-logout:hover { border-color: var(--sky-strong); color: var(--sky-deep); }
+
+.panel-header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
 /* ── PERFIL HEADER (avatar + nombre) ── */
 .perfil-header {
@@ -436,6 +615,10 @@ body {
     .side-img { width: 80px; }
     .nav-icons { gap: 1.8rem; }
     .nav-item img { width: 36px; height: 36px; }
+    .panel-header-right { gap: 8px; }
+    .notif-btn { width: 36px; height: 36px; }
+    .notif-icon { width: 24px; height: 24px; }
+    .notif-panel { right: -8px; width: 260px; }
     .selector-cursos-grid { grid-template-columns: 1fr 1fr; }
     .acciones-grid { grid-template-columns: 1fr; }
     .section-title-alumno { font-size: 1.9rem; }
@@ -597,8 +780,8 @@ body {
     border-radius: 50%;
     flex-shrink: 0;
 }
-.just-dot   { background: #2d8a5e; }
-.injust-dot { background: #c85050; }
+.just-dot   { background: #B0E0E6; }
+.injust-dot { background: #4682B4; }
 
 .canvas-wrap {
     position: relative;
@@ -732,7 +915,7 @@ body {
     font-weight: 500;
     align-self: flex-start;
 }
-.estado-excelente { background: rgba(45,138,94,0.12); color: #2d8a5e; border: 1.5px solid rgba(45,138,94,0.3); }
+.estado-excelente { background: #B0E0E6; color: #2d8a5e; border: 1.5px solid rgba(45,138,94,0.3); }
 .estado-bueno     { background: rgba(75,163,217,0.12); color: var(--sky-deep); border: 1.5px solid rgba(75,163,217,0.3); }
 .estado-riesgo    { background: rgba(176,48,48,0.10); color: #b03030; border: 1.5px solid rgba(176,48,48,0.3); }
 
@@ -1145,13 +1328,22 @@ body.dark-mode .nav-item[href*="prece"] img {
     content: url('icono-prece-blanco.png');
 }
 
-/* Los íconos de nav están dentro de <a class="nav-item"> > img */
-body.dark-mode .nav-icons .nav-item:first-child img {
-    content: url('icono-alumno-blanco.png');
+/* Los íconos de nav están dentro de <a class="nav-item"> > img — ahora 3 ítems */
+body.dark-mode .nav-icons .nav-item:nth-child(1) img { content: url('icono-alumno-blanco.png'); }
+body.dark-mode .nav-icons .nav-item:nth-child(2) img { content: url('icono-prece-blanco.png'); }
+body.dark-mode .nav-icons .nav-item:nth-child(3) img { content: url('icono-directivos-blanco.png'); }
+
+/* nav-icon-dir-img: mismo estilo que los demás íconos de nav */
+.nav-icon-dir-img {
+    width: 42px; height: 42px; object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
-body.dark-mode .nav-icons .nav-item:last-child img {
-    content: url('icono-prece-blanco.png');
+.nav-item.active .nav-icon-dir-img {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 8px rgba(75,163,217,0.5));
 }
+.nav-item:not(.active):hover .nav-icon-dir-img { transform: scale(1.12); }
 
 /* ══════════════════════════════════════════════
    LOGIN DUAL — correo + tarjeta
@@ -1431,3 +1623,105 @@ body.dark-mode .btn-tres-puntos { color: #7aa8c8; }
     .tarjeta-body { flex-direction: column; align-items: center; text-align: center; }
     .tarjeta-modal-card { max-width: 95vw; }
 }
+
+/* ── Tarjeta de llegadas tarde (barra horizontal) ── */
+.tardanzas-bar-card {
+    background: rgba(255,255,255,0.88);
+    border: 1.5px solid rgba(75,163,217,0.22);
+    border-radius: 18px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    backdrop-filter: blur(6px);
+}
+.tardanzas-bar-izq {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex: 1;
+}
+.tardanzas-bar-icon {
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+.tardanzas-bar-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    text-align: left;
+}
+.tardanzas-bar-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--ink);
+}
+.tardanzas-bar-desc {
+    font-size: 0.83rem;
+    color: var(--ink-muted);
+    line-height: 1.4;
+}
+.tardanzas-bar-der {
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-shrink: 0;
+}
+.tardanzas-bar-sep {
+    display: block;
+    width: 2px;
+    height: 36px;
+    background: var(--sky-deep);
+    border-radius: 99px;
+    opacity: 0.5;
+}
+.tardanzas-bar-stat {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+.tardanzas-bar-stat .tardanza-numero {
+    font-size: 1.6rem;
+}
+.tardanzas-bar-stat .tardanza-label {
+    font-size: 0.65rem;
+}
+
+body.dark-mode .tardanzas-bar-card {
+    background: rgba(12,26,46,0.80);
+    border-color: rgba(75,163,217,0.18);
+}
+
+@media (max-width: 600px) {
+    .tardanzas-bar-card { flex-direction: column; align-items: flex-start; }
+    .tardanzas-bar-der { width: 100%; justify-content: flex-end; }
+    .tardanzas-bar-sep { display: none; }
+}
+
+/* ── Tarjeta de llegadas tarde ── */
+.tardanza-stat-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    margin-top: 8px;
+}
+.tardanza-numero {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 3rem;
+    font-weight: 700;
+    color: var(--sky-deep);
+    line-height: 1;
+}
+.tardanza-label {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+body.dark-mode .tardanza-numero { color: var(--sky-mid) !important; }
+body.dark-mode .tardanza-label  { color: var(--ink-muted) !important; }

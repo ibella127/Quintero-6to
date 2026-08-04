@@ -150,6 +150,18 @@ body {
 }
 .nav-item:not(.active):hover img { transform: scale(1.12); }
 
+/* nav-icon-dir-img: mismo estilo que los demás íconos de nav */
+.nav-icon-dir-img {
+    width: 42px; height: 42px; object-fit: contain;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.nav-item.active .nav-icon-dir-img {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 8px rgba(75,163,217,0.5));
+}
+.nav-item:not(.active):hover .nav-icon-dir-img { transform: scale(1.12); }
+
 /* Label debajo del icono */
 .nav-label {
     font-family: 'DM Sans', sans-serif;
@@ -392,7 +404,15 @@ body {
     background: var(--sky-mid);
     transform: rotateY(180deg);
 }
+@keyframes escuela-spin {
+    from { transform: rotateY(0deg);   }
+    to   { transform: rotateY(360deg); }
+}
+
 .school-img { width: 100%; height: 100%; object-fit: cover; }
+.flip-card:hover .school-img {
+    animation: escuela-spin 0.7s ease-in-out forwards;
+}
 
 .footer-msg {
     font-family: 'DM Sans', sans-serif;
@@ -801,4 +821,7 @@ body.dark-mode .nav-icons .nav-item:first-child img {
 }
 body.dark-mode .nav-icons .nav-item:last-child img {
     content: url('icono-prece-blanco.png');
+}
+body.dark-mode .nav-icons .nav-item:last-child img {
+    content: url('icono-directivos-blanco.png');
 }

@@ -152,3 +152,57 @@ INSERT INTO personas (nombre, apellido, DNI, gmail) VALUES
 ('Santiago Nahuel', 'Vigna', 49384184, 'snvigna@escuelasproa.edu.ar'),
 ('Julieta', 'Demmichellis', 49384184, 'jdemichellis@escuelasproa.edu.ar'),
 ('Alexia', 'Galfre', 49384184, 'agalfre@escuelasproa.edu.ar');
+-- ══════════════════════════════════════════════════════════════
+-- Tabla DOCUMENTOS: documentación genérica subida por los alumnos
+-- (se crea automáticamente al iniciar app.py, se deja acá también
+--  como referencia / para poder crearla a mano si hace falta)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS documentos (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno   INT NOT NULL,
+    fecha       DATE NOT NULL,
+    descripcion VARCHAR(300),
+    archivo     VARCHAR(300) NOT NULL,
+    creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla ANUNCIOS: mensajes del preceptor a un alumno puntual
+-- (se crea automáticamente al iniciar app.py, se deja acá también
+--  como referencia / para poder crearla a mano si hace falta)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS anuncios (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno INT NOT NULL,
+    mensaje   TEXT NOT NULL,
+    leido     BOOLEAN DEFAULT FALSE,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla FERIADOS: días que no cuentan como falta (fines de semana
+-- se excluyen por cálculo, no hace falta cargarlos acá)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS feriados (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    fecha       DATE NOT NULL UNIQUE,
+    descripcion VARCHAR(200) NOT NULL,
+    tipo        VARCHAR(20) NOT NULL DEFAULT 'nacional'  -- 'nacional' | 'excepcion'
+);
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla FALTAS: ausencias automáticas (sin registro de QR) en días
+-- hábiles. Se generan de forma perezosa e idempotente cada vez que
+-- se abre la pestaña de Faltas en Preceptoría o Dirección, o cuando
+-- el propio alumno consulta su resumen de asistencia.
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS faltas (
+    id        INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno INT NOT NULL,
+    fecha     DATE NOT NULL,
+    creado_en TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uniq_falta (id_alumno, fecha),
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);

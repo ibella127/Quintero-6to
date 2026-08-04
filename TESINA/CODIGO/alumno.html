@@ -5,8 +5,203 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Alumno</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="alumno-style.css">
+    <link rel="stylesheet" href="alumno-style.css?v=2">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <!-- Estilos de "Mis fotos y certificados" incrustados acá a propósito:
+         así el abanico de cartas se ve bien sí o sí, sin depender de que el
+         navegador haya traído la última versión de alumno-style.css -->
+    <style>
+        .cartas-docs-section { margin-top: 2.4rem; }
+
+        .cartas-grupo { margin-bottom: 2.2rem; }
+        .cartas-grupo:last-child { margin-bottom: 0; }
+
+        .cartas-grupo-titulo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.15rem;
+            font-weight: 600;
+            color: var(--sky-deep, #164a6d);
+            margin-bottom: 0.6rem;
+        }
+
+        .cartas-stack {
+            display: flex;
+            align-items: flex-end;
+            padding: 34px 24px 14px 56px;
+            overflow-x: auto;
+            overflow-y: visible;
+            min-height: 146px;
+        }
+
+        .carta-doc {
+            position: relative;
+            flex: 0 0 auto;
+            width: 92px;
+            height: 128px;
+            margin-left: -54px;
+            border-radius: 12px;
+            border: 3px solid var(--cream-pale, #faf7f1);
+            box-shadow: 0 3px 10px rgba(26, 74, 109, 0.25);
+            background-size: cover;
+            background-position: center;
+            background-color: var(--sky-mid, #a8d4f5);
+            background-image: linear-gradient(160deg, var(--sky-mid, #a8d4f5), var(--sky-light, #ddeeff));
+            cursor: pointer;
+            transform: rotate(var(--rot, 0deg));
+            transition: transform 0.25s ease, box-shadow 0.25s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .carta-doc:first-child { margin-left: 0; }
+
+        .carta-doc:hover {
+            transform: rotate(var(--rot, 0deg)) translateY(-22px) scale(1.08);
+            box-shadow: 0 12px 24px rgba(26, 74, 109, 0.35);
+            z-index: 999 !important;
+        }
+
+        .carta-doc-icon { font-size: 1.8rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.15)); }
+
+        .carta-doc-fecha {
+            position: absolute;
+            bottom: 6px; left: 0; right: 0;
+            text-align: center;
+            font-size: 0.6rem;
+            font-weight: 600;
+            color: #fff;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.65);
+            pointer-events: none;
+        }
+
+        /* Lightbox */
+        .carta-lightbox-overlay {
+            position: fixed; inset: 0;
+            background: rgba(10, 24, 40, 0.72);
+            backdrop-filter: blur(3px);
+            display: flex; align-items: center; justify-content: center;
+            z-index: 2000;
+            padding: 24px;
+        }
+        .carta-lightbox-content {
+            position: relative;
+            max-width: min(90vw, 520px);
+            max-height: 86vh;
+            display: flex; flex-direction: column; align-items: center;
+        }
+        .carta-lightbox-content img {
+            max-width: 100%; max-height: 74vh;
+            border-radius: 14px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.4);
+            background: var(--cream-pale, #faf7f1);
+        }
+        .carta-lightbox-caption {
+            color: #fff; font-size: 0.88rem; margin-top: 12px; text-align: center;
+            text-shadow: 0 1px 3px rgba(0,0,0,0.5);
+        }
+        .carta-lightbox-cerrar {
+            position: absolute; top: -18px; right: -18px;
+            width: 34px; height: 34px; border-radius: 50%;
+            background: #fff; border: none; color: var(--ink, #1e2a38);
+            font-size: 1rem; cursor: pointer;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.3);
+        }
+        body.dark-mode .cartas-grupo-titulo { color: var(--sky-mid, #a8d4f5) !important; }
+        body.dark-mode .carta-doc { border-color: rgba(8,20,38,0.9) !important; }
+
+        /* Historial detallado — cuadro comparativo desplegable */
+        .historial-card {
+            background: none;
+            border: none;
+            border-radius: 22px;
+            padding: 0;
+            overflow: hidden;
+        }
+        .historial-header {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 1.4rem 1.8rem;
+            font-family: 'DM Sans', sans-serif;
+            text-align: left;
+        }
+        .historial-header-titulo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: var(--ink, #1e2a38);
+        }
+        .historial-header-icon { font-size: 1.1rem; }
+        .historial-header-badge {
+            background: var(--sky-mid, #a8d4f5);
+            color: var(--sky-deep, #164a6d);
+            border-radius: 999px;
+            padding: 2px 11px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            font-family: 'DM Sans', sans-serif;
+        }
+        .historial-header-flecha {
+            font-size: 1.1rem;
+            color: var(--sky-deep, #164a6d);
+            transition: transform 0.25s ease;
+            flex-shrink: 0;
+        }
+        .historial-header-flecha.abierta { transform: rotate(180deg); }
+
+        .historial-lista {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 0 1.8rem 1.6rem;
+            max-height: 600px;
+            opacity: 1;
+            transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease;
+        }
+        .historial-lista-cerrada {
+            max-height: 0;
+            opacity: 0;
+            padding-top: 0;
+            padding-bottom: 0;
+            overflow: hidden;
+        }
+        .hist-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            font-size: 0.85rem;
+        }
+        .hist-item.just-item {
+            background: rgba(45,138,94,0.1);
+            color: #1f6b47;
+            border: 1px solid rgba(45,138,94,0.2);
+        }
+        .hist-item.injust-item {
+            background: rgba(200,80,60,0.08);
+            color: #a3392a;
+            border: 1px solid rgba(200,80,60,0.2);
+        }
+        body.dark-mode .historial-header-titulo { color: #c8dff0 !important; }
+        body.dark-mode .hist-item.just-item {
+            background: rgba(45,138,94,0.15) !important;
+            color: #6fd6a3 !important;
+            border-color: rgba(45,138,94,0.28) !important;
+        }
+        body.dark-mode .hist-item.injust-item {
+            background: rgba(200,80,60,0.14) !important;
+            color: #ef9a8c !important;
+            border-color: rgba(200,80,60,0.28) !important;
+        }
+    </style>
 </head>
 <body>
     <div class="bg-blur"></div>
@@ -27,6 +222,10 @@
                     <img src="icono-prece.png" alt="Preceptoría">
                     <span class="nav-label">Preceptoría</span>
                 </a>
+                <a href="directivos.html" class="nav-item">
+                    <img src="icono-directivos.png" alt="Directivos" class="nav-icon-dir-img">
+                    <span class="nav-label">Directivos</span>
+                </a>
             </nav>
         </header>
 
@@ -37,39 +236,20 @@
                 <!-- ══════════ LOGIN ══════════ -->
                 <div id="login-screen">
                     <h1 class="section-title-alumno">¡Hola, estudiante!</h1>
+                    <p class="login-col-titulo" style="margin-bottom:1.5rem;">Ingresá con tu correo institucional para continuar</p>
 
-                    <div class="login-dual">
-
-                        <!-- Columna izquierda: correo institucional -->
-                        <div class="login-col">
-                            <p class="login-col-titulo">Ingresá con tu correo institucional para continuar</p>
-                            <div class="login-card">
-                                <div class="input-icon-wrap">
-                                    <span class="input-icon">📩</span>
-                                    <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
-                                </div>
-                                <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> o verificá que esté registrado.</p>
-                                <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
-                            </div>
+                    <div class="login-card">
+                        <div class="input-icon-wrap">
+                            <span class="input-icon">📩</span>
+                            <input type="email" id="email-input" placeholder="tucorreo@escuelasproa.edu.ar" class="login-input">
                         </div>
-
-                        <!-- Divisor -->
-                        <div class="login-divisor"><span>o</span></div>
-
-                        <!-- Columna derecha: tarjeta RFID -->
-                        <div class="login-col">
-                            <p class="login-col-titulo">Si ingresaste con tarjeta, colocá tu nombre / IP de tarjeta</p>
-                            <div class="login-card">
-                                <div class="input-icon-wrap">
-                                    <span class="input-icon">💳</span>
-                                    <input type="text" id="tarjeta-input" placeholder="Nombre o ID de tarjeta" class="login-input" autocomplete="off">
-                                </div>
-                                <p id="tarjeta-error" class="login-error" style="display:none;">Tarjeta no reconocida. Intentá de nuevo.</p>
-                                <button class="btn-login" onclick="verificarTarjeta()">Ingresar</button>
-                            </div>
-                        </div>
-
+                        <p id="login-error" class="login-error" style="display:none;">Usá tu correo <strong>@escuelasproa.edu.ar</strong> o verificá que esté registrado.</p>
+                        <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
                     </div>
+
+                    <!-- Tarjeta RFID (oculta) -->
+                    <input type="text" id="tarjeta-input" style="display:none;" autocomplete="off">
+                    <p id="tarjeta-error" class="login-error" style="display:none;">Tarjeta no reconocida. Intentá de nuevo.</p>
                 </div>
 
                 <!-- ══════════ PANEL ══════════ -->
@@ -83,7 +263,25 @@
                                 <p id="bienvenida-texto" class="subtitle-alumno" style="margin:0;"></p>
                             </div>
                         </div>
-                        <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                        <div class="panel-header-right">
+                            <div class="notif-wrap" id="notif-wrap">
+                                <button class="notif-btn" id="notif-btn" title="Notificaciones" aria-label="Notificaciones">
+                                    <img src="Icono_notificaciones.png" alt="Notificaciones" class="notif-icon notif-icon-light">
+                                    <img src="Icono_notificaciones-blanco.png" alt="Notificaciones" class="notif-icon notif-icon-dark">
+                                    <span class="notif-dot" id="notif-dot"></span>
+                                </button>
+
+                                <div class="notif-panel" id="notif-panel">
+                                    <div class="notif-panel-header">
+                                        <span>Notificaciones</span>
+                                    </div>
+                                    <div class="notif-panel-lista" id="notif-panel-lista">
+                                        <p class="notif-panel-vacio">No tenés notificaciones por ahora</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                        </div>
                     </div>
 
                     <!-- Info personal del alumno -->
@@ -94,11 +292,11 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">División</span>
-                            <span class="info-valor" id="info-division">A</span>
+                            <span class="info-valor" id="info-division">—</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Legajo</span>
-                            <span class="info-valor" id="info-legajo">N°</span>
+                            <span class="info-valor" id="info-legajo">—</span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">Año lectivo</span>
@@ -159,6 +357,24 @@
                             </div>
                         </div>
 
+                        <!-- Llegadas tarde (desde scanner) — barra horizontal -->
+                        <div class="tardanzas-bar-card">
+                            <div class="tardanzas-bar-izq">
+                                <span class="tardanzas-bar-icon">🕐</span>
+                                <div class="tardanzas-bar-texto">
+                                    <span class="tardanzas-bar-titulo">Llegadas tarde</span>
+                                    <span class="tardanzas-bar-desc">Veces que llegaste después de las 07:40 registradas por el scanner</span>
+                                </div>
+                            </div>
+                            <div class="tardanzas-bar-der">
+                                <span class="tardanzas-bar-sep"></span>
+                                <div class="tardanzas-bar-stat">
+                                    <span class="tardanza-numero" id="stat-tardanzas">—</span>
+                                    <span class="tardanza-label">VECES TARDE</span>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Gráfico faltas por mes -->
                         <div class="grafico-card">
                             <div class="grafico-titulo-row">
@@ -175,8 +391,14 @@
 
                         <!-- Historial -->
                         <div class="historial-card">
-                            <h3 class="grafico-titulo">Historial detallado</h3>
-                            <div id="historial-lista" class="historial-lista"></div>
+                            <button class="historial-header" onclick="toggleHistorial()" id="historial-toggle-btn">
+                                <span class="historial-header-titulo">
+                                    Historial detallado
+                                    <span class="historial-header-badge" id="historial-badge">0</span>
+                                    <span class="historial-header-flecha" id="historial-flecha">▾</span>
+                                </span>
+                            </button>
+                            <div id="historial-lista" class="historial-lista historial-lista-cerrada"></div>
                         </div>
 
                         <!-- Gráfico beneficio -->
@@ -249,6 +471,49 @@
                             </div>
                         </div>
 
+                        <!-- Carta: Estuve ausente -->
+                        <div class="accion-card-wrap" id="wrap-falta">
+                            <div class="card-aura aura-falta"></div>
+                            <div class="accion-card-bg2"></div>
+                            <div class="accion-card-bg1"></div>
+                            <div class="accion-card" id="card-falta">
+                                <div class="accion-icon">📋</div>
+                                <h3 class="accion-titulo">Estuve ausente</h3>
+                                <p class="accion-desc">Justificá tu falta con el motivo y un certificado si tenés.</p>
+                                <button class="btn-accion" onclick="toggleFormFalta()">Justificar falta</button>
+                                <div id="form-falta" class="accion-form" style="display:none;">
+                                    <input type="date" id="falta-fecha" class="login-input" style="margin-bottom:6px;">
+                                    <textarea id="falta-motivo" placeholder="Explicá brevemente el motivo de tu ausencia..." class="accion-textarea"></textarea>
+                                    <input type="file" id="falta-archivo" accept="image/*,.pdf" class="accion-file">
+                                    <label for="falta-archivo" class="btn-file">📎 Adjuntar certificado (opcional)</label>
+                                    <span id="nombre-falta-archivo" class="archivo-nombre"></span>
+                                    <button class="btn-enviar-accion" onclick="enviarFalta()">Enviar justificación</button>
+                                    <p id="falta-ok" class="accion-ok" style="display:none;">✓ Justificación enviada correctamente</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Carta: Subir documentación -->
+                        <div class="accion-card-wrap" id="wrap-doc">
+                            <div class="card-aura aura-doc"></div>
+                            <div class="accion-card-bg2"></div>
+                            <div class="accion-card-bg1"></div>
+                            <div class="accion-card" id="card-doc">
+                                <div class="accion-icon">🗂️</div>
+                                <h3 class="accion-titulo">Subir documentación</h3>
+                                <p class="accion-desc">Adjuntá cualquier documento que necesites presentar (formularios, constancias, fichas, etc.).</p>
+                                <button class="btn-accion" onclick="toggleFormDoc()">Subir documentación</button>
+                                <div id="form-doc" class="accion-form" style="display:none;">
+                                    <input type="file" id="doc-archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*" class="accion-file">
+                                    <label for="doc-archivo" class="btn-file">📎 Elegir archivo</label>
+                                    <span id="nombre-doc-archivo" class="archivo-nombre"></span>
+                                    <input type="text" id="doc-desc" placeholder="Descripción breve (ej: constancia de alumno regular)" class="login-input" style="margin-top:8px;">
+                                    <button class="btn-enviar-accion" onclick="enviarDocumentacion()">Enviar documentación</button>
+                                    <p id="doc-ok" class="accion-ok" style="display:none;">✓ Documentación enviada correctamente</p>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Carta: Foto de clase -->
                         <div class="accion-card-wrap" id="wrap-foto">
                             <div class="card-aura aura-foto"></div>
@@ -260,7 +525,7 @@
                                     <button class="btn-tres-puntos" onclick="abrirTarjeta()" title="Ver tarjeta de beneficio">···</button>
                                 </div>
                                 <h3 class="accion-titulo">Foto de clase</h3>
-                                <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que la llevás al día.</p>
+                                <p class="accion-desc">Subí una foto de lo que hiciste en clase para mostrar que llevás la materia al día.</p>
                                 <button class="btn-accion" onclick="toggleFormFoto()">Subir foto</button>
                                 <div id="form-foto" class="accion-form" style="display:none;">
                                     <input type="file" id="foto-input" accept="image/*" capture="environment" class="accion-file">
@@ -276,6 +541,31 @@
                             </div>
                         </div>
 
+                    </div>
+
+                    <!-- ══════════ MIS FOTOS Y CERTIFICADOS (cartas superpuestas) ══════════ -->
+                    <div class="cartas-docs-section" id="cartas-docs-section" style="display:none;">
+                        <h3 class="grafico-titulo" style="text-align:center;">🗂️ Mis fotos y certificados</h3>
+                        <p class="grafico-subtitulo" style="text-align:center; margin-bottom:1.2rem;">Tocá una carta para verla en grande</p>
+
+                        <div class="cartas-grupo">
+                            <h4 class="cartas-grupo-titulo" style="text-align:center;">📸 Fotos de clase</h4>
+                            <div class="cartas-stack" id="stack-fotos"></div>
+                        </div>
+
+                        <div class="cartas-grupo">
+                            <h4 class="cartas-grupo-titulo" style="text-align:center;">📎 Certificados</h4>
+                            <div class="cartas-stack" id="stack-certificados"></div>
+                        </div>
+                    </div>
+
+                    <!-- Lightbox para ver una carta en grande -->
+                    <div id="carta-lightbox-overlay" class="carta-lightbox-overlay" style="display:none;" onclick="cerrarCartaLightbox(event)">
+                        <div class="carta-lightbox-content" onclick="event.stopPropagation()">
+                            <button class="carta-lightbox-cerrar" onclick="cerrarCartaLightbox(event)">✕</button>
+                            <img id="carta-lightbox-img" src="" alt="Vista ampliada">
+                            <p id="carta-lightbox-caption" class="carta-lightbox-caption"></p>
+                        </div>
                     </div>
 
                 </div>
@@ -337,6 +627,6 @@
         </div>
     </div>
 
-    <script src="alumno-script.js"></script>
+    <script src="alumno-script.js?v=2"></script>
 </body>
 </html>

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krono | Directivos</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="stylesheet" href="directivos-style.css?v=2">
+    <script>
+        // Prevenir flash blanco en modo oscuro
+        if (localStorage.getItem('krono-dark') === '1') {
+            document.documentElement.classList.add('dark-pre');
+            document.addEventListener('DOMContentLoaded', () => document.body.classList.add('dark-mode'));
+        }
+    </script>
+</head>
+<body>
+    <div class="bg-blur"></div>
+    <div class="layout">
+
+        <header class="sidebar">
+            <div class="logo-top">
+                <a href="Index.html" class="logo-top">
+                    <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+                </a>
+            </div>
+            <nav class="nav-icons">
+                <a href="alumno.html" class="nav-item">
+                    <img src="icono-alumno.png" alt="Estudiantes">
+                    <span class="nav-label">Estudiantes</span>
+                </a>
+                <a href="preceptoria.html" class="nav-item">
+                    <img src="icono-prece.png" alt="Preceptoría">
+                    <span class="nav-label">Preceptoría</span>
+                </a>
+                <a href="directivos.html" class="nav-item active">
+                    <img src="icono-directivos.png" alt="Directivos" class="nav-icon-dir-img">
+                    <span class="nav-label">Directivos</span>
+                </a>
+            </nav>
+        </header>
+
+        <main class="main-content flex-center">
+            <div class="dir-container">
+                <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header-main">
+
+                <!-- ══════════ PANTALLA DE LOGIN ══════════ -->
+                <div id="login-screen">
+                    <h1 class="section-title-dir">Acceso Directivos</h1>
+                    <p class="subtitle-dir">Ingresá la contraseña para continuar</p>
+
+                    <div class="login-card">
+                        <div class="input-icon-wrap">
+                            <span class="input-icon">🔒</span>
+                            <input type="password" id="password-input" placeholder="Contraseña de directivos"
+                                   class="login-input" onkeydown="if(event.key==='Enter') verificarPassword()">
+                            <button class="toggle-pw" onclick="togglePw()" title="Mostrar/ocultar">👀</button>
+                        </div>
+                        <p id="login-error" class="login-error" style="display:none;">
+                            Contraseña incorrecta. Intentá de nuevo.
+                        </p>
+                        <button class="btn-login" onclick="verificarPassword()">Ingresar</button>
+                    </div>
+                </div>
+
+                <!-- ══════════ PANEL DIRECTIVOS ══════════ -->
+                <div id="panel-screen" style="display:none;">
+                    <div class="panel-header-row">
+                        <h1 class="section-title-dir" style="margin-bottom:0;">Panel de Directivos</h1>
+                        <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                    </div>
+
+                    <!-- Pestañas -->
+                    <div class="tabs-dir">
+                        <button id="tab-estadisticas" class="tab-btn tab-activa" onclick="cambiarPestania('estadisticas')">📊 Estadísticas</button>
+                        <button id="tab-faltas"       class="tab-btn"            onclick="cambiarPestania('faltas')">📋 Faltas por alumno</button>
+                        <button id="tab-tardanzas"    class="tab-btn"            onclick="cambiarPestania('tardanzas')">🕐 Tardanzas</button>
+                        <button id="tab-tendencias"   class="tab-btn"            onclick="cambiarPestania('tendencias')">📈 Tendencias tardanzas</button>
+                        <button id="tab-tendencias-faltas" class="tab-btn"       onclick="cambiarPestania('tendencias-faltas')">📉 Tendencias faltas</button>
+                    </div>
+
+                    <!-- ══ PANEL ESTADÍSTICAS ══ -->
+                    <div id="panel-estadisticas">
+                        <div class="selector-cursos-grid">
+                            <button class="btn-curso activo" onclick="seleccionarCurso(0,this)">Todos</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(1,this)">1° Año</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(2,this)">2° Año</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(3,this)">3° Año</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(4,this)">4° Año</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(5,this)">5° Año</button>
+                            <button class="btn-curso" onclick="seleccionarCurso(6,this)">6° Año</button>
+                        </div>
+
+                        <div class="stats-cards-row">
+                            <div class="stat-card">
+                                <span class="stat-icon">👥</span>
+                                <div class="stat-num" id="stat-total">—</div>
+                                <div class="stat-label">Total alumnos</div>
+                            </div>
+                            <div class="stat-card stat-card-blue">
+                                <span class="stat-icon">✅</span>
+                                <div class="stat-num" id="stat-presentes">—</div>
+                                <div class="stat-label">Presentes hoy</div>
+                            </div>
+                            <div class="stat-card stat-card-red">
+                                <span class="stat-icon">❌</span>
+                                <div class="stat-num" id="stat-ausentes">—</div>
+                                <div class="stat-label">Ausentes hoy</div>
+                            </div>
+                            <div class="stat-card stat-card-amber">
+                                <span class="stat-icon">⏰</span>
+                                <div class="stat-num" id="stat-tardes">—</div>
+                                <div class="stat-label">Llegadas tarde hoy</div>
+                            </div>
+                        </div>
+
+                        <div class="display-area" style="margin-top:1.5rem;">
+                            <div class="seccion-titulo-wrap">
+                                <h3 class="seccion-titulo">Motivos más frecuentes de tardanza</h3>
+                                <span class="seccion-sub" id="motivos-curso-label">Todos los cursos</span>
+                            </div>
+                            <div id="motivos-frecuentes" class="motivos-lista">
+                                <p class="instruccion">Cargando datos...</p>
+                            </div>
+                        </div>
+
+                        <div class="display-area" style="margin-top:1.2rem;">
+                            <div class="seccion-titulo-wrap">
+                                <h3 class="seccion-titulo">Motivos más frecuentes de ausencia</h3>
+                                <span class="seccion-sub" id="faltas-curso-label">Todos los cursos</span>
+                            </div>
+                            <div id="faltas-frecuentes" class="motivos-lista">
+                                <p class="instruccion">Cargando datos...</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ══ PANEL FALTAS POR ALUMNO ══ -->
+                    <div id="panel-faltas" style="display:none;">
+                        <div class="filtros-row">
+                            <div class="selector-cursos-mini" id="selector-faltas-curso">
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(1,this)">1° Año</button>
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(2,this)">2° Año</button>
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(3,this)">3° Año</button>
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(4,this)">4° Año</button>
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(5,this)">5° Año</button>
+                                <button class="btn-curso-mini" onclick="verFaltasCurso(6,this)">6° Año</button>
+                            </div>
+                            <div class="filtros-extras">
+                                <input type="text" id="buscar-alumno" placeholder="Buscar alumno..."
+                                       class="input-buscar" oninput="filtrarAlumnos()">
+                                <select id="orden-faltas" class="aviso-select" onchange="filtrarAlumnos()">
+                                    <option value="mas">Mayor cantidad de faltas</option>
+                                    <option value="menos">Menor cantidad de faltas</option>
+                                    <option value="alfa">Alfabético</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="faltas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
+                            <p class="instruccion">Seleccioná un curso para ver las faltas</p>
+                        </div>
+                    </div>
+
+                    <!-- ══ PANEL TARDANZAS ══ -->
+                    <div id="panel-tardanzas" style="display:none;">
+                        <div class="filtros-row">
+                            <div class="selector-cursos-mini" id="selector-tardanzas-curso">
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(1,this)">1° Año</button>
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(2,this)">2° Año</button>
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(3,this)">3° Año</button>
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(4,this)">4° Año</button>
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(5,this)">5° Año</button>
+                                <button class="btn-curso-mini" onclick="verTardanzasCurso(6,this)">6° Año</button>
+                            </div>
+                            <div class="filtros-extras">
+                                <input type="text" id="buscar-alumno-tard" placeholder="Buscar alumno..."
+                                       class="input-buscar" oninput="filtrarTardanzas()">
+                                <select id="orden-tardanzas" class="aviso-select" onchange="filtrarTardanzas()">
+                                    <option value="mas">Mayor cantidad de tardanzas</option>
+                                    <option value="menos">Menor cantidad de tardanzas</option>
+                                    <option value="alfa">Alfabético</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="tardanzas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
+                            <p class="instruccion">Seleccioná un curso para ver las tardanzas</p>
+                        </div>
+                    </div>
+
+                    <!-- ══ PANEL TENDENCIAS ══ -->
+                    <div id="panel-tendencias" style="display:none;">
+                        <div class="filtros-row">
+                            <div class="selector-cursos-mini" id="selector-tend-curso">
+                                <button class="btn-curso-mini" onclick="verTendencias(1,this)">1° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendencias(2,this)">2° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendencias(3,this)">3° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendencias(4,this)">4° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendencias(5,this)">5° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendencias(6,this)">6° Año</button>
+                            </div>
+                        </div>
+                        <div id="tendencias-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
+                            <p class="instruccion">Seleccioná un curso para ver las tendencias mensuales</p>
+                        </div>
+                    </div>
+
+                    <!-- ══ PANEL TENDENCIAS FALTAS ══ -->
+                    <div id="panel-tendencias-faltas" style="display:none;">
+                        <div class="filtros-row">
+                            <div class="selector-cursos-mini" id="selector-tend-faltas-curso">
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(1,this)">1° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(2,this)">2° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(3,this)">3° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(4,this)">4° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(5,this)">5° Año</button>
+                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(6,this)">6° Año</button>
+                            </div>
+                        </div>
+                        <div id="tendencias-faltas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
+                            <p class="instruccion">Seleccioná un curso para ver las tendencias de faltas</p>
+                        </div>
+                    </div>
+
+                </div><!-- /panel-screen -->
+            </div><!-- /dir-container -->
+        </main>
+    </div>
+
+    <script src="directivos-script.js?v=2"></script>
+</body>
+</html>
