@@ -25,11 +25,11 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 
 - Registro de asistencia por código QR
 - Clasificación automática: presente / tarde / ausente
-- Registro de motivos, ingresos tardío y certificados
+- Registro de motivos, ingresos tardíos y certificados
 - Panel de consulta para preceptores y alumnos
-- Sistema de beneficios por porcentaje de asistencia
 - Sistema de estadísticas para directivos
 - Sistema de digitalización de documentación
+- Panel de carga de notas de profesores
 
 ---
 
@@ -43,10 +43,10 @@ Tanto preceptores como alumnos pueden consultar el historial completo: faltas, t
 - [ ] Panel de estadística - Directivos
 - [x] Integración código QR
 - [ ] Panel de registro de faltas
-- [x] Sistema de beneficios
 - [ ] Sistema de ingreso
 - [ ] Chatbot
 - [x] Sistema de digitalización de documentación
+- [ ] Panel de carga de notas
 ---
 
 *Desarrollado para PRoA 🏫*
