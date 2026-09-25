@@ -10,8 +10,7 @@ Sistema web de gestión de asistencias para PRoA, desarrollado por **Quintero & 
 
 KRONO automatiza el control de asistencia escolar. Cada estudiante registra su llegada mediante **código QR** y el sistema guarda la hora exacta, clasificando automáticamente entre presente, tarde o ausente.
 
-Tanto preceptores como alumnos pueden consultar el historial completo: faltas, tardanzas, motivos, retiros y certificados. Además, el sistema mide el porcentaje de asistencia de cada alumno para otorgar **beneficios en cantina**, promoviendo la presencialidad.
-
+Tanto preceptores como alumnos pueden consultar el historial completo: faltas, tardanzas, motivos, retiros y certificados. El sistema también le permite a los profesores cargar las notas para generar un promedio.
 ---
 
 ## Stack
