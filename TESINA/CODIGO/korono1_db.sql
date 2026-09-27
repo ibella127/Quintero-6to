@@ -153,6 +153,41 @@ INSERT INTO personas (nombre, apellido, DNI, gmail) VALUES
 ('Julieta', 'Demmichellis', 49384184, 'jdemichellis@escuelasproa.edu.ar'),
 ('Alexia', 'Galfre', 49384184, 'agalfre@escuelasproa.edu.ar');
 -- ══════════════════════════════════════════════════════════════
+-- Tabla MOTIVOS_FALTA: justificativo que carga el alumno para un
+-- día puntual en el que faltó (cruza por fecha contra la tabla
+-- `faltas` para saber cuántas ausencias están justificadas).
+-- (se crea automáticamente al iniciar app.py, se deja acá también
+--  como referencia / para poder crearla a mano si hace falta)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS motivos_falta (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno   INT NOT NULL,
+    fecha       DATE NOT NULL,
+    motivo      TEXT NOT NULL,
+    certificado VARCHAR(300) DEFAULT NULL,
+    creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla MOTIVOS_TARDANZA: justificativo que carga el alumno para
+-- una llegada tarde puntual (columna "Motivos" en Preceptoría;
+-- eliminar un registro acá también borra su certificado del disco
+-- vía /prece/eliminar-motivo).
+-- (se crea automáticamente al iniciar app.py, se deja acá también
+--  como referencia / para poder crearla a mano si hace falta)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS motivos_tardanza (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno   INT NOT NULL,
+    fecha       DATE NOT NULL,
+    motivo      TEXT NOT NULL,
+    certificado VARCHAR(300) DEFAULT NULL,
+    creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);
+
+-- ══════════════════════════════════════════════════════════════
 -- Tabla DOCUMENTOS: documentación genérica subida por los alumnos
 -- (se crea automáticamente al iniciar app.py, se deja acá también
 --  como referencia / para poder crearla a mano si hace falta)
@@ -206,3 +241,55 @@ CREATE TABLE IF NOT EXISTS faltas (
     UNIQUE KEY uniq_falta (id_alumno, fecha),
     FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
 );
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla PROFESORES: staff docente y preceptoría, cargada desde la
+-- planilla "Lista de profes". Login de Profesores = gmail + nombre
+-- completo (OTP por mail). Login de Preceptoría = gmail + nombre +
+-- apellido + DNI (es_preceptor = TRUE, sin OTP).
+-- (se crea y se carga automáticamente al iniciar app.py, se deja
+--  acá también como referencia / para poder crearla a mano)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS profesores (
+    id_profesor  INT AUTO_INCREMENT PRIMARY KEY,
+    nombre       VARCHAR(120) NOT NULL,
+    apellido     VARCHAR(120) NOT NULL,
+    gmail        VARCHAR(150) NOT NULL UNIQUE,
+    dni          VARCHAR(15) DEFAULT NULL,
+    materias     VARCHAR(300) DEFAULT NULL,
+    cursos       VARCHAR(100) DEFAULT NULL,
+    es_preceptor BOOLEAN NOT NULL DEFAULT FALSE,
+    creado_en    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT IGNORE INTO profesores (nombre, apellido, gmail, dni, materias, cursos, es_preceptor) VALUES
+('Leonardo Osmar', 'Calvi', 'localvi@escuelasproa.edu.ar', NULL, 'Física / Biología / Química / Club de ciencias', '1ro - 2do - 3ro - 4to - 5to', FALSE),
+('Alexia', 'Galfre', 'agalfre@escuelasproa.edu.ar', NULL, 'Química', '6to - 2do', FALSE),
+('Mariana', 'Gubaro', 'mgubaro@escuelasproa.edu.ar', NULL, 'Matemáticas', '6to', FALSE),
+('Carmen', 'Devallis', 'cdevallis@escuelasproa.edu.ar', NULL, 'Matemáticas / Sistema y entornos', '1ro - 2do', FALSE),
+('Verónia', 'Hepp', 'vhepp@escuelasproa.edu.ar', NULL, 'Matemáticas', '4to - 5to', FALSE),
+('Valeria Nieves', 'Villalba', 'vnvillalba@escuelasproa.edu.ar', NULL, 'Programación / Estructura y almacenamiento de datos / Club de ciencias / Robótica', '3ro - 4to - 5to', FALSE),
+('Pablo', 'Torres', 'pmtorres@escuelasproa.edu.ar', NULL, 'Club de ciencias / Diseño de interfaces y usabilidad / Desarrollo de Apps móviles / Algoritmo y programación', '2do - 6to - 4to - 3ro', FALSE),
+('Marysol', 'Tello', 'matello@escuelasproa.edu.ar', NULL, 'Programación / Desarrollo de Apps móviles / Testing', '6to', FALSE),
+('Agustina', 'Seleme', 'asoledadseleme@escuelasproa.edu.ar', NULL, 'Inglés', '6to - 5to', FALSE),
+('Natalia', 'Quinteros', 'nataliaquinteros@escuelasproa.edu.ar', NULL, 'Inglés / TIA', '6to - 5to - 4to', FALSE),
+('Debora', 'Buratti', 'dburatti@escuelasproa.edu.ar', NULL, 'Lengua y Literatura', '1ro - 2do - 3ro - 5to - 6to', FALSE),
+('Florencia', 'Felici', 'mffelici@escuelasproa.edu.ar', NULL, 'FVT / Ciudadanía y política', '6to', FALSE),
+('Marina', 'Badino', 'mbadino@escuelasproa.edu.ar', NULL, 'Teatro / Club de arte / Danza', '1ro - 3ro - 4to - 6to', FALSE),
+('Yoavi', 'Costamagna', 'ycostamagna@escuelasproa.edu.ar', NULL, 'Música', '5to', FALSE),
+('Paula', 'Tresca', 'ptresca@escuelasproa.edu.ar', NULL, 'Artística', '4to', FALSE),
+('Edgar', 'Busto', 'edgarbusto@escuelasproa.edu.ar', NULL, 'Educación Física / Club', '6to', FALSE),
+('Sofia', 'Phileas', 'sphileas@escuelasproa.edu.ar', NULL, 'Educación Física / Club', '6to - 1ro', FALSE),
+('Blas', 'Bonsano', 'bbonzano@escuelasproa.edu.ar', NULL, 'Geografía', '1ro - 2do - 3ro - 4to', FALSE),
+('Soledad', 'Muñoz', 'msmunoz@escuelasproa.edu.ar', NULL, 'Ciudadanía y Participación / Filosofía', '6to', FALSE),
+('Facundo', 'Martinez', 'fmartinez@escuelasproa.edu.ar', NULL, 'Inglés / TIA', '1ro', FALSE),
+('Meliza', 'Ferroni', 'mferroni@escuelasproa.edu.ar', NULL, 'Tecnología', '3ro', FALSE),
+('Carina', 'Bruera', 'cabruera@escuelasproa.edu.ar', NULL, 'Educación Física / Club', '2do - 3ro', FALSE),
+('Juan Pablo', 'Freggiaro', 'jpfreggiaro@escuelasproa.edu.ar', NULL, 'Educación Física / Club', '5to', FALSE),
+('Evelin', 'Menazzi', 'ermenazzi@escuelasproa.edu.ar', NULL, 'Lengua y Literatura', '4to', FALSE),
+('Julieta', 'Demichellis', 'jdemichelis@escuelasproa.edu.ar', NULL, 'Tecnología', '1ro - 2do', FALSE),
+('Emanuel', 'Pacho', 'epacho@escuelasproa.edu.ar', '28650621', NULL, NULL, TRUE),
+('Lorena', 'Pizarro', 'lspizarro@escuelasproa.edu.ar', '27541557', NULL, NULL, TRUE),
+('Antonella', 'Monchietti', 'advmonchietti@escuelasproa.edu.ar', NULL, 'Club de arte', '2do', FALSE),
+('Sofi', 'Druetta', 'sfdrueta@escuelasproa.edu.ar', NULL, 'Coordinadora', NULL, FALSE),
+('Elisa', 'Selva', 'ebselva@escuelasproa.edu.ar', NULL, 'FVT / Ciudadanía', '5to', FALSE);

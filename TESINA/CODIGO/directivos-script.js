@@ -20,6 +20,7 @@
             const ahora = document.body.classList.toggle('dark-mode');
             localStorage.setItem('krono-dark', ahora ? '1' : '0');
             btn.querySelector('img').src = ahora ? 'Modo_oscuro.png' : 'Modo_claro.png';
+            if (typeof _reRenderAllCharts === 'function') _reRenderAllCharts();
         });
         const sidebar = document.querySelector('.sidebar');
         if (sidebar) sidebar.appendChild(btn);
@@ -79,6 +80,115 @@ const HORA_ENTRADA = '07:40';
 
 let faltasData    = [];
 let tardanzasData = [];
+
+// ══════════════════════════════════════════════
+//  GRÁFICOS (Chart.js) — helpers
+// ══════════════════════════════════════════════
+const _charts = {};
+const _lastRender = {};
+
+function _cssVar(name) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+function _themeColors() {
+    return {
+        sky:    _cssVar('--sky-strong') || '#4ba3d9',
+        skyDeep:_cssVar('--sky-deep')   || '#164a6d',
+        ambar:  _cssVar('--ambar')      || '#b07a10',
+        rojo:   _cssVar('--rojo')       || '#c84040',
+        verde:  _cssVar('--verde')      || '#2d8a5e',
+        ink:    document.body.classList.contains('dark-mode') ? '#c8dff0' : (_cssVar('--ink') || '#1e2a38'),
+        inkMuted: document.body.classList.contains('dark-mode') ? '#7aa8c8' : (_cssVar('--ink-muted') || '#4a5568'),
+        grid:   document.body.classList.contains('dark-mode') ? 'rgba(75,163,217,0.12)' : 'rgba(75,163,217,0.15)'
+    };
+}
+
+function _reRenderAllCharts() {
+    const fns = { _renderBarRanking, _renderLineTendencia };
+    Object.values(_lastRender).forEach(({ fn, args }) => {
+        if (fns[fn]) fns[fn](...args);
+    });
+}
+
+function _destroyChart(id) {
+    if (_charts[id]) { _charts[id].destroy(); delete _charts[id]; }
+}
+
+/** Barra horizontal — ranking de alumnos (top N por cantidad) */
+function _renderBarRanking(canvasId, items, colorKey, labelDato) {
+    _lastRender[canvasId] = { fn: '_renderBarRanking', args: [canvasId, items, colorKey, labelDato] };
+    _destroyChart(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') return;
+    const c = _themeColors();
+
+    const top = [...items].sort((a,b) => b.valor - a.valor).slice(0, 10);
+    if (!top.length || top.every(t => t.valor === 0)) {
+        canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);
+        return;
+    }
+
+    _charts[canvasId] = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: top.map(t => t.nombre),
+            datasets: [{
+                label: labelDato,
+                data: top.map(t => t.valor),
+                backgroundColor: c[colorKey] || c.sky,
+                borderRadius: 6,
+                maxBarThickness: 26
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                x: { beginAtZero: true, ticks: { color: c.inkMuted, precision: 0 }, grid: { color: c.grid } },
+                y: { ticks: { color: c.ink, font: { size: 11 } }, grid: { display: false } }
+            }
+        }
+    });
+}
+
+/** Línea — evolución mensual */
+function _renderLineTendencia(canvasId, labels, valores, colorKey, labelDato) {
+    _lastRender[canvasId] = { fn: '_renderLineTendencia', args: [canvasId, labels, valores, colorKey, labelDato] };
+    _destroyChart(canvasId);
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || typeof Chart === 'undefined') return;
+    const c = _themeColors();
+    const color = c[colorKey] || c.sky;
+
+    _charts[canvasId] = new Chart(canvas, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [{
+                label: labelDato,
+                data: valores,
+                borderColor: color,
+                backgroundColor: color + '33',
+                fill: true,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: color
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, ticks: { color: c.inkMuted, precision: 0 }, grid: { color: c.grid } },
+                x: { ticks: { color: c.inkMuted }, grid: { display: false } }
+            }
+        }
+    });
+}
 
 // ══════════════════════════════════════════════
 //  LOGIN
@@ -333,7 +443,7 @@ async function seleccionarCurso(anio, btnEl) {
     try {
         const cursos = anio === 0 ? [1,2,3,4,5,6] : [anio];
         let totalAlumnos = 0, totalPresentes = 0, totalTardes = 0, totalAusentes = 0;
-        let motivosAlumnos = [], motivosPreceptor = [];
+        let motivosAlumnos = [];
 
         // ── Estadísticas de hoy desde el escáner QR (endpoint real)
         const statsPromises = cursos.map(c => fetch(`${API}/dir/asistencia-hoy/${c}`).then(r => r.ok ? r.json() : {}));
@@ -345,8 +455,8 @@ async function seleccionarCurso(anio, btnEl) {
             totalAusentes += s.ausentes  || 0;
         });
 
-        // ── Motivos subidos por alumnos (tabla motivos_tardanza) → tardanzas
-        // ── Avisos de preceptoría (tabla avisos_tardanza) → tardanzas con justificación del prece
+        // ── Motivos subidos por los propios alumnos (tabla motivos_tardanza).
+        //    Directivos no usa avisos de preceptoría (avisos_tardanza) para esto.
         for (const c of cursos) {
             const resMotivos = await fetch(`${API}/prece/motivos?anio=${c}`);
             if (resMotivos.ok) {
@@ -355,16 +465,6 @@ async function seleccionarCurso(anio, btnEl) {
                     if (m.motivo) motivosAlumnos.push(m.motivo);
                 }));
             }
-
-            const resAvisos = await fetch(`${API}/prece/avisos?anio=${c}`);
-            if (resAvisos.ok) {
-                const avs = await resAvisos.json();
-                if (Array.isArray(avs)) {
-                    avs.forEach(av => {
-                        if (av.motivo) motivosPreceptor.push({ ...av, anio: c });
-                    });
-                }
-            }
         }
 
         document.getElementById('stat-total').textContent     = totalAlumnos;
@@ -372,8 +472,7 @@ async function seleccionarCurso(anio, btnEl) {
         document.getElementById('stat-ausentes').textContent  = totalAusentes;
         document.getElementById('stat-tardes').textContent    = totalTardes;
 
-        // Tardanzas: dos subsecciones en el mismo div
-        renderMotivosDual('motivos-frecuentes', motivosAlumnos, motivosPreceptor, '');
+        renderMotivosBarras('motivos-frecuentes', motivosAlumnos, '');
         // Ausencias: sin fuente de motivos aún
         document.getElementById('faltas-frecuentes').innerHTML =
             '<p class="instruccion" style="color:var(--ink-muted);font-size:0.9rem;">Los motivos de ausencia se registran cuando el alumno justifica su falta.</p>';
@@ -400,32 +499,29 @@ async function verFaltasCurso(anio, btnEl) {
     const cont = document.getElementById('faltas-contenedor');
     cont.innerHTML = '<p class="instruccion">Cargando...</p>';
     faltasData = [];
+    const label = document.getElementById('faltas-chart-label');
+    if (label) label.textContent = `${anio}° Año`;
 
     try {
-        // ── Ausencias reales del escáner QR (días sin ingreso en días hábiles)
-        const resFaltas = await fetch(`${API}/dir/faltas-alumno/${anio}`);
-        const faltas = resFaltas.ok ? await resFaltas.json() : [];
+        const res = await fetch(`${API}/dir/faltas-alumno/${anio}`);
+        const faltas = res.ok ? await res.json() : [];
 
-        // ── Motivos subidos por los alumnos (para mostrar chips)
-        const resMotivos = await fetch(`${API}/prece/motivos?anio=${anio}`);
-        const motivosMapa = {};
-        if (resMotivos.ok) {
-            const mots = await resMotivos.json();
-            mots.forEach(al => { motivosMapa[al.gmail] = al.motivos || []; });
-        }
+        faltasData = faltas.map(al => ({
+            nombre:      al.nombre,
+            apellido:    al.apellido,
+            gmail:       al.gmail,
+            faltas:      al.ausencias,
+            conMotivo:   al.con_motivo || 0,
+            diasHabiles: al.dias_habiles,
+            topMotivos:  al.motivos_frecuentes || []
+        }));
 
-        faltasData = faltas.map(al => {
-            const motivos = motivosMapa[al.gmail] || [];
-            const top = topN(motivos.map(m => m.motivo), 3);
-            return {
-                nombre:     al.nombre,
-                apellido:   al.apellido,
-                gmail:      al.gmail,
-                faltas:     al.ausencias,
-                diasHabiles: al.dias_habiles,
-                topMotivos: top
-            };
-        });
+        _renderBarRanking(
+            'chart-faltas',
+            faltasData.map(al => ({ nombre: `${al.apellido}, ${al.nombre}`, valor: al.faltas })),
+            'rojo',
+            'Ausencias'
+        );
 
         filtrarAlumnos();
     } catch(e) {
@@ -461,8 +557,8 @@ function filtrarAlumnos() {
     datos.forEach(al => {
         const badge  = al.faltas === 0 ? 'badge-verde' : al.faltas <= 3 ? 'badge-ambar' : 'badge-rojo';
         const chips  = al.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('');
-        const conMot = al.faltas > 0
-            ? `<span class="badge-num badge-ambar">${al.faltas}</span>`
+        const conMot = al.conMotivo > 0
+            ? `<span class="badge-num badge-ambar">${al.conMotivo}</span>`
             : `<span class="badge-num badge-verde">0</span>`;
         const tooltip = al.diasHabiles ? `title="Sobre ${al.diasHabiles} días hábiles"` : '';
         html += `
@@ -480,7 +576,7 @@ function filtrarAlumnos() {
 
 // ══════════════════════════════════════════════
 //  TARDANZAS
-//  Usa: GET /alumnos/<anio>  y  GET /prece/avisos?anio=N
+//  Usa: GET /dir/tardanzas-alumno/<anio>
 // ══════════════════════════════════════════════
 async function verTardanzasCurso(anio, btnEl) {
     document.querySelectorAll('#selector-tardanzas-curso .btn-curso-mini').forEach(b => b.classList.remove('activo'));
@@ -489,9 +585,12 @@ async function verTardanzasCurso(anio, btnEl) {
     const cont = document.getElementById('tardanzas-contenedor');
     cont.innerHTML = '<p class="instruccion">Cargando...</p>';
     tardanzasData = [];
+    const label = document.getElementById('tardanzas-chart-label');
+    if (label) label.textContent = `${anio}° Año`;
 
     try {
-        // ── Tardanzas reales del escáner QR + motivos de avisos de preceptoría
+        // ── Tardanzas reales del escáner QR + motivos que el propio alumno
+        //    subió, cruzados por fecha (nada de avisos de preceptoría)
         const resTard = await fetch(`${API}/dir/tardanzas-alumno/${anio}`);
         const tardArr = resTard.ok ? await resTard.json() : [];
 
@@ -500,8 +599,16 @@ async function verTardanzasCurso(anio, btnEl) {
             apellido:   al.apellido,
             gmail:      al.gmail,
             tardanzas:  al.tardanzas,
+            conMotivo:  al.con_motivo || 0,
             topMotivos: al.topMotivos || []
         }));
+
+        _renderBarRanking(
+            'chart-tardanzas',
+            tardanzasData.map(al => ({ nombre: `${al.apellido}, ${al.nombre}`, valor: al.tardanzas })),
+            'ambar',
+            'Tardanzas'
+        );
 
         filtrarTardanzas();
     } catch(e) {
@@ -531,21 +638,21 @@ function filtrarTardanzas() {
     <div class="dir-tabla">
         <div class="dir-tabla-header cols-tardanzas">
             <span>Alumno</span><span>Correo</span>
-            <span>Tardanzas</span><span>Con aviso</span><span>Motivos frecuentes</span>
+            <span>Tardanzas</span><span>Con motivo</span><span>Motivos frecuentes</span>
         </div>`;
 
     datos.forEach(al => {
         const badge   = al.tardanzas === 0 ? 'badge-verde' : al.tardanzas <= 3 ? 'badge-ambar' : 'badge-rojo';
         const chips   = al.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('');
-        const conAviso = al.tardanzas > 0
-            ? `<span class="badge-num badge-ambar">${al.tardanzas}</span>`
+        const conMotivo = al.conMotivo > 0
+            ? `<span class="badge-num badge-ambar">${al.conMotivo}</span>`
             : `<span class="badge-num badge-verde">0</span>`;
         html += `
         <div class="dir-fila cols-tardanzas">
             <div class="dir-fila-nombre">${al.apellido}, ${al.nombre}</div>
             <div class="dir-fila-email">${al.gmail}</div>
             <div><span class="badge-num ${badge}">${al.tardanzas}</span></div>
-            <div>${conAviso}</div>
+            <div>${conMotivo}</div>
             <div class="motivo-chips">${chips || '<span style="font-size:0.78rem;color:var(--ink-muted)">—</span>'}</div>
         </div>`;
     });
@@ -555,14 +662,14 @@ function filtrarTardanzas() {
 
 // ══════════════════════════════════════════════
 //  TENDENCIAS MENSUALES
-//  Usa: GET /prece/motivos?anio=N  y  GET /prece/avisos?anio=N
+//  Usa: GET /dir/tendencias/<anio>
 // ══════════════════════════════════════════════
 async function verTendencias(anio, btnEl) {
     document.querySelectorAll('#selector-tend-curso .btn-curso-mini').forEach(b => b.classList.remove('activo'));
     if (btnEl) btnEl.classList.add('activo');
 
-    const cont = document.getElementById('tendencias-contenedor');
-    cont.innerHTML = '<p class="instruccion">Cargando...</p>';
+    const detalle = document.getElementById('tendencias-detalle');
+    detalle.innerHTML = '<p class="instruccion">Cargando...</p>';
 
     try {
         const MESES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -577,34 +684,37 @@ async function verTendencias(anio, btnEl) {
         const datos = await res.json();
 
         if (!datos.length) {
-            cont.innerHTML = '<p class="instruccion">Sin datos registrados para este curso</p>';
+            _destroyChart('chart-tendencias');
+            detalle.innerHTML = '<p class="instruccion">Sin datos registrados para este curso</p>';
             return;
         }
 
+        // Orden cronológico ascendente para el gráfico
+        const ordenAsc = [...datos].sort((a,b) => a.mes.localeCompare(b.mes));
+        _renderLineTendencia(
+            'chart-tendencias',
+            ordenAsc.map(d => labelMes(d.mes)),
+            ordenAsc.map(d => d.tardanzas),
+            'ambar',
+            'Llegadas tarde'
+        );
+
+        // Detalle: motivos más frecuentes por mes (el número ya está en el gráfico)
         let html = '';
         datos.forEach(d => {
+            if (!d.topMotivos.length) return;
             html += `
             <div class="tend-mes-bloque">
-                <div class="tend-mes-titulo">${labelMes(d.mes)}</div>
-                <div class="tend-stats-row">
-                    <div class="tend-mini-card">
-                        <div class="tend-mini-num" style="color:var(--ambar)">${d.tardanzas}</div>
-                        <div class="tend-mini-label">Llegadas<br>tarde</div>
-                    </div>
-                    ${d.topMotivos.length ? `
-                    <div class="tend-mini-card" style="align-items:flex-start;min-width:180px;">
-                        <div class="tend-mini-label" style="margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Top motivos</div>
-                        <div class="motivo-chips">${d.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('')}</div>
-                    </div>` : ''}
-                </div>
+                <div class="tend-mes-titulo">${labelMes(d.mes)} <span class="seccion-sub" style="margin-left:6px;">${d.tardanzas} tarde${d.tardanzas !== 1 ? 's' : ''}</span></div>
+                <div class="motivo-chips">${d.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('')}</div>
             </div>`;
         });
-
-        cont.innerHTML = html;
+        detalle.innerHTML = html || '<p class="instruccion">Sin motivos registrados para este curso</p>';
 
     } catch(e) {
         console.error(e);
-        cont.innerHTML = '<p class="instruccion">Error al conectar con el servidor</p>';
+        _destroyChart('chart-tendencias');
+        detalle.innerHTML = '<p class="instruccion">Error al conectar con el servidor</p>';
     }
 }
 
@@ -616,8 +726,8 @@ async function verTendenciasFaltas(anio, btnEl) {
     document.querySelectorAll('#selector-tend-faltas-curso .btn-curso-mini').forEach(b => b.classList.remove('activo'));
     if (btnEl) btnEl.classList.add('activo');
 
-    const cont = document.getElementById('tendencias-faltas-contenedor');
-    cont.innerHTML = '<p class="instruccion">Cargando...</p>';
+    const detalle = document.getElementById('tendencias-faltas-detalle');
+    detalle.innerHTML = '<p class="instruccion">Cargando...</p>';
 
     try {
         const MESES_ES = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
@@ -632,34 +742,35 @@ async function verTendenciasFaltas(anio, btnEl) {
         const datos = await res.json();
 
         if (!datos.length) {
-            cont.innerHTML = '<p class="instruccion">Sin datos registrados para este curso</p>';
+            _destroyChart('chart-tendencias-faltas');
+            detalle.innerHTML = '<p class="instruccion">Sin datos registrados para este curso</p>';
             return;
         }
 
+        const ordenAsc = [...datos].sort((a,b) => a.mes.localeCompare(b.mes));
+        _renderLineTendencia(
+            'chart-tendencias-faltas',
+            ordenAsc.map(d => labelMes(d.mes)),
+            ordenAsc.map(d => d.ausencias),
+            'rojo',
+            'Ausencias'
+        );
+
         let html = '';
         datos.forEach(d => {
+            if (!d.topMotivos.length) return;
             html += `
             <div class="tend-mes-bloque">
-                <div class="tend-mes-titulo">${labelMes(d.mes)}</div>
-                <div class="tend-stats-row">
-                    <div class="tend-mini-card">
-                        <div class="tend-mini-num" style="color:var(--rojo)">${d.ausencias}</div>
-                        <div class="tend-mini-label">Ausencias<br>del curso</div>
-                    </div>
-                    ${d.topMotivos.length ? `
-                    <div class="tend-mini-card" style="align-items:flex-start;min-width:180px;">
-                        <div class="tend-mini-label" style="margin-bottom:4px;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;">Top motivos</div>
-                        <div class="motivo-chips">${d.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('')}</div>
-                    </div>` : ''}
-                </div>
+                <div class="tend-mes-titulo">${labelMes(d.mes)} <span class="seccion-sub" style="margin-left:6px;">${d.ausencias} ausencia${d.ausencias !== 1 ? 's' : ''}</span></div>
+                <div class="motivo-chips">${d.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('')}</div>
             </div>`;
         });
-
-        cont.innerHTML = html;
+        detalle.innerHTML = html || '<p class="instruccion">Sin motivos registrados para este curso</p>';
 
     } catch(e) {
         console.error(e);
-        cont.innerHTML = '<p class="instruccion">Error al conectar con el servidor</p>';
+        _destroyChart('chart-tendencias-faltas');
+        detalle.innerHTML = '<p class="instruccion">Error al conectar con el servidor</p>';
     }
 }
 

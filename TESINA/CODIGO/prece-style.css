@@ -151,6 +151,24 @@ body {
 }
 .nav-item:not(.active):hover img { transform: scale(1.12); }
 
+/* Ícono de "Profesores" — momentáneamente sin imagen: emoji como placeholder */
+.nav-icon-emoji {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 26px;
+    line-height: 1;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.nav-item.active .nav-icon-emoji {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 8px rgba(75,163,217,0.5));
+}
+.nav-item:not(.active):hover .nav-icon-emoji { transform: scale(1.12); }
+
 /* Label debajo del icono */
 .nav-label {
     font-family: 'DM Sans', sans-serif;
@@ -557,6 +575,30 @@ body {
     border-bottom-color: var(--sky-strong);
     font-weight: 600;
 }
+
+/* Botón "+" para desplegar pestañas extra */
+.tab-toggle-btn {
+    color: var(--sky-strong);
+    font-size: 31px;
+    font-weight: 700;
+    line-height: 1;
+}
+.tab-toggle-btn:hover { color: var(--sky-deep); }
+.tab-toggle-btn #tab-toggle-icon {
+    display: inline-block;
+    transition: transform 0.25s ease;
+}
+.tab-toggle-btn.tabs-extra-abiertas #tab-toggle-icon {
+    transform: rotate(45deg);
+}
+
+/* Pestañas extra: aparecen debajo de la lista visible, mismo estilo */
+.tabs-extra {
+    display: none;
+    width: 100%;
+    text-align: center;
+}
+.tabs-extra.mostrar { display: block; }
 
 /* ══════════════════════════════════════════════
    MOTIVOS — acordeón por alumno

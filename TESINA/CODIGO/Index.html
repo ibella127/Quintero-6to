@@ -6,6 +6,36 @@
     <title>Krono | Web Oficial</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
     <link rel="stylesheet" href="style.css">
+    <style>
+        /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
+           cruzan según el modo — evita que se vean las dos pisadas juntas */
+        .nav-icon-profes-wrap { position: relative; display: block; }
+        .nav-icon-profes-img {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: contain; transition: opacity 0.3s ease;
+        }
+        .nav-icon-profes-img.icon-oscuro { opacity: 0; }
+        body.dark-mode .nav-icon-profes-img.icon-claro { opacity: 0; }
+        body.dark-mode .nav-icon-profes-img.icon-oscuro { opacity: 1; }
+    </style>
+    <script>
+        // Iguala el tamaño del ícono de Profesores (dos <img> apiladas) al de
+        // los demás íconos del nav, midiendo el real en vez de adivinar un px.
+        function igualarTamanoIconoProfes() {
+            var wrap = document.querySelector('.nav-icon-profes-wrap');
+            var otro = document.querySelector('.nav-item img:not(.nav-icon-profes-img)');
+            if (!wrap || !otro) return;
+            var w = otro.getBoundingClientRect().width;
+            var h = otro.getBoundingClientRect().height;
+            if (w && h) {
+                wrap.style.width  = w + 'px';
+                wrap.style.height = h + 'px';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', igualarTamanoIconoProfes);
+        window.addEventListener('load', igualarTamanoIconoProfes);
+        window.addEventListener('resize', igualarTamanoIconoProfes);
+    </script>
 </head>
 <body>
     <div class="bg-blur"></div>
@@ -28,6 +58,13 @@
                 <a href="directivos.html" class="nav-item">
                     <img src="icono-directivos.png" alt="Directivos" class="nav-icon-dir-img">
                     <span class="nav-label">Directivos</span>
+                </a>
+                <a href="profesores.html" class="nav-item">
+                    <span class="nav-icon-profes-wrap">
+                        <img src="Icono-profes.png" alt="Profesores" class="nav-icon-profes-img icon-claro">
+                        <img src="Icono-profes-blanco.png" alt="Profesores" class="nav-icon-profes-img icon-oscuro">
+                    </span>
+                    <span class="nav-label">Profesores</span>
                 </a>
             </nav>
         </header>

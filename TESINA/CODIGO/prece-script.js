@@ -83,35 +83,57 @@
 //  KRONO — Preceptoría Script
 // ══════════════════════════════════════════
  
-const PASSWORD_CORRECTA = "tesina";
- 
 // --- AUTENTICACIÓN ---
- 
-function verificarPassword() {
-    const input = document.getElementById('password-input').value.trim();
+
+function verificarDatosPreceptoria() {
+    const nombreCompleto = document.getElementById('prece-nombre-input').value.trim();
+    const email = document.getElementById('prece-email-input').value.trim().toLowerCase();
+    const dni   = document.getElementById('prece-dni-input').value.trim();
     const error = document.getElementById('login-error');
-    if (input === PASSWORD_CORRECTA) {
-        document.getElementById('login-screen').style.display = 'none';
-        document.getElementById('panel-screen').style.display  = 'block';
-        error.style.display = 'none';
-        sessionStorage.setItem('prece_auth', 'true');
-    } else {
+    error.style.display = 'none';
+
+    if (!nombreCompleto || !email || !dni) {
+        error.textContent = 'Completá nombre y apellido, correo y DNI.';
         error.style.display = 'block';
-        document.getElementById('password-input').value = '';
-        document.getElementById('password-input').focus();
+        return;
     }
+
+    const partes = nombreCompleto.split(/\s+/);
+    const nombre = partes.slice(0, -1).join(' ') || partes[0];
+    const apellido = partes.length > 1 ? partes[partes.length - 1] : '';
+
+    fetch('http://127.0.0.1:5000/preceptoria/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, nombre, apellido, dni })
+    })
+        .then(r => r.json().then(body => ({ status: r.status, body })))
+        .then(({ status, body }) => {
+            if (status !== 200) {
+                error.textContent = body.error || 'No se pudo verificar los datos.';
+                error.style.display = 'block';
+                return;
+            }
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('panel-screen').style.display  = 'block';
+            sessionStorage.setItem('prece_auth', 'true');
+            sessionStorage.setItem('prece_nombre', `${body.nombre} ${body.apellido}`);
+            cambiarPestania('avisos');
+        })
+        .catch(() => {
+            error.textContent = 'Error de conexión con el servidor.';
+            error.style.display = 'block';
+        });
 }
- 
-function togglePw() {
-    const campo = document.getElementById('password-input');
-    campo.type = campo.type === 'password' ? 'text' : 'password';
-}
- 
+
 function cerrarSesion() {
     sessionStorage.removeItem('prece_auth');
+    sessionStorage.removeItem('prece_nombre');
     document.getElementById('panel-screen').style.display  = 'none';
     document.getElementById('login-screen').style.display  = 'block';
-    document.getElementById('password-input').value = '';
+    document.getElementById('prece-nombre-input').value = '';
+    document.getElementById('prece-email-input').value  = '';
+    document.getElementById('prece-dni-input').value    = '';
 }
  
 // --- PANEL DE CURSOS ---
@@ -220,7 +242,7 @@ function cargarMotivosCurso(anio, btn) {
                     </button>
                     <div class="motivo-alumno-body" style="display:none;">
                         ${a.motivos.map(m => `
-                            <div class="motivo-item">
+                            <div class="motivo-item" id="motivo-item-${m.id}">
                                 <div class="motivo-item-top">
                                     <span class="motivo-fecha">📅 ${m.fecha}</span>
                                     ${m.certificado
@@ -228,6 +250,7 @@ function cargarMotivosCurso(anio, btn) {
                                         : '<span class="sin-cert">Sin certificado</span>'}
                                 </div>
                                 <p class="motivo-texto">${m.motivo}</p>
+                                <button class="btn-eliminar-foto" onclick="eliminarMotivo(${m.id}, this)">🗑 Eliminar</button>
                             </div>
                         `).join('')}
                     </div>
@@ -245,6 +268,43 @@ function toggleMotivos(btn) {
     const abierto = body.style.display !== 'none';
     body.style.display = abierto ? 'none' : 'block';
     chevron.textContent = abierto ? '▾' : '▴';
+}
+
+function eliminarMotivo(id, btn) {
+    if (!confirm('¿Eliminás este motivo? No se puede deshacer.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    fetch(`http://127.0.0.1:5000/prece/eliminar-motivo/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const item = document.getElementById(`motivo-item-${id}`);
+                if (item) {
+                    item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        const bloque = item.closest('.motivo-alumno-bloque');
+                        item.remove();
+                        // Si era el último motivo de ese alumno, sacamos toda su tarjeta
+                        if (bloque && !bloque.querySelectorAll('.motivo-item').length) {
+                            bloque.remove();
+                        } else if (bloque) {
+                            const badge = bloque.querySelector('.motivo-badge');
+                            if (badge) {
+                                const restantes = bloque.querySelectorAll('.motivo-item').length;
+                                badge.textContent = `${restantes} registro${restantes !== 1 ? 's' : ''}`;
+                            }
+                        }
+                    }, 300);
+                }
+            } else {
+                if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+                alert('Error al eliminar: ' + (data.error || 'desconocido'));
+            }
+        })
+        .catch(() => {
+            if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+        });
 }
 
 // ══════════════════════════════════════════
@@ -317,7 +377,10 @@ function cargarDocumentacion() {
         `<div id="docs-resultado"><p class="instruccion">Seleccioná un curso para ver la documentación</p></div>`;
 }
 
+let _docsAnioActual = null;
+
 function cargarDocsCurso(anio, btn) {
+    _docsAnioActual = anio;
     document.querySelectorAll('#selector-docs .btn-curso-mini')
         .forEach(b => b.classList.remove('activo'));
     btn.classList.add('activo');
@@ -398,19 +461,51 @@ function abrirDocsModal(alumno) {
                     : `<a href="${url}" target="_blank" class="doc-item-pdf">📄 Descargar archivo</a>`;
 
             return `
-                <div class="doc-item">
+                <div class="doc-item" id="doc-item-${doc.id}">
                     <div class="doc-item-top">
                         <span class="doc-item-tipo">${ICONOS[doc.tipo]} ${LABELS[doc.tipo]}</span>
                         <span class="doc-item-fecha">${doc.fecha}</span>
                     </div>
                     <p class="doc-item-desc">${doc.descripcion}</p>
                     ${preview}
+                    <button class="btn-eliminar-foto" onclick="eliminarDocumento(${doc.id}, this)">🗑 Eliminar</button>
                 </div>
             `;
         }).join('');
 
     overlay.style.display = 'flex';
     // NO agregamos lightbox-abierto al body — ese blur es solo para el lightbox de imagen
+}
+
+function eliminarDocumento(id, btn) {
+    if (!confirm('¿Eliminás este documento? No se puede deshacer.')) return;
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    fetch(`http://127.0.0.1:5000/prece/eliminar-documento/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(data => {
+            if (data.ok) {
+                const item = document.getElementById(`doc-item-${id}`);
+                if (item) {
+                    item.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        item.remove();
+                        const lista = document.getElementById('docs-modal-lista');
+                        if (lista && !lista.children.length) cerrarDocsModal();
+                    }, 300);
+                }
+                // Resincroniza la grilla de alumnos (cantidad de archivos, etc.)
+                const btnActivo = document.querySelector('#selector-docs .btn-curso-mini.activo');
+                if (_docsAnioActual && btnActivo) cargarDocsCurso(_docsAnioActual, btnActivo);
+            } else {
+                if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+                alert('Error al eliminar: ' + (data.error || 'desconocido'));
+            }
+        })
+        .catch(() => {
+            if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+        });
 }
 
 function cerrarDocsModal() {
@@ -490,7 +585,7 @@ function eliminarFoto(id, archivo, btn) {
 }
 
 function cambiarPestania(pestania) {
-    ['alumnos','avisos','motivos','faltas','evidencias','documentacion','anuncios','ingresos','excel'].forEach(p => {
+    ['alumnos','avisos','motivos','faltas','evidencias','anuncios','ingresos','excel'].forEach(p => {
         const tab   = document.getElementById(`tab-${p}`);
         const panel = document.getElementById(`panel-${p}`);
         if (tab)   tab.classList.toggle('tab-activa', p === pestania);
@@ -499,11 +594,21 @@ function cambiarPestania(pestania) {
     if (pestania === 'motivos')       cargarMotivos();
     if (pestania === 'faltas')        iniciarPanelFaltas();
     if (pestania === 'evidencias')    cargarEvidenciasPrece();
-    if (pestania === 'documentacion') cargarDocumentacion();
-    if (pestania === 'anuncios')      iniciarPanelAnuncios();
+    if (pestania === 'anuncios')    { iniciarPanelAnuncios(); cargarDocumentacion(); }
     if (pestania === 'avisos')        iniciarPanelAvisos();
     if (pestania === 'ingresos')      iniciarPanelIngresos();
     if (pestania === 'excel')         iniciarPanelExcel();
+}
+
+// Muestra/oculta el segundo grupo de pestañas (Alumnos, Motivos, Evidencias, Ingresos)
+function toggleTabsExtra() {
+    const extra = document.getElementById('tabs-extra');
+    const btn   = document.getElementById('tab-toggle-extra');
+    if (!extra || !btn) return;
+
+    const abierto = extra.classList.toggle('mostrar');
+    btn.classList.toggle('tabs-extra-abiertas', abierto);
+    btn.setAttribute('aria-expanded', abierto ? 'true' : 'false');
 }
 
 // ══════════════════════════════════════════
@@ -595,22 +700,13 @@ function verFaltasCurso(anio, btnEl) {
     cont.innerHTML = '<p class="instruccion">Cargando...</p>';
     faltasPreceData = [];
 
-    Promise.all([
-        fetch(`http://127.0.0.1:5000/prece/faltas/${anio}`).then(r => r.json()),
-        fetch(`http://127.0.0.1:5000/prece/motivos?anio=${anio}`).then(r => r.json())
-    ])
-        .then(([faltas, motivos]) => {
-            const motivosMapa = {};
-            (motivos || []).forEach(al => { motivosMapa[al.gmail] = al.motivos || []; });
-
-            faltasPreceData = (faltas || []).map(al => {
-                const mots = motivosMapa[al.gmail] || [];
-                const top  = topN(mots.map(m => m.motivo), 3);
-                return {
-                    nombre: al.nombre, apellido: al.apellido, gmail: al.gmail,
-                    faltas: al.ausencias, diasHabiles: al.dias_habiles, topMotivos: top
-                };
-            });
+    fetch(`http://127.0.0.1:5000/prece/faltas/${anio}`).then(r => r.json())
+        .then(faltas => {
+            faltasPreceData = (faltas || []).map(al => ({
+                nombre: al.nombre, apellido: al.apellido, gmail: al.gmail,
+                faltas: al.ausencias, conMotivo: al.con_motivo || 0,
+                diasHabiles: al.dias_habiles, topMotivos: al.motivos_frecuentes || []
+            }));
             filtrarFaltasPrece();
         })
         .catch(e => {
@@ -646,8 +742,8 @@ function filtrarFaltasPrece() {
     datos.forEach(al => {
         const badge  = al.faltas === 0 ? 'badge-verde' : al.faltas <= 3 ? 'badge-ambar' : 'badge-rojo';
         const chips  = al.topMotivos.map(m => `<span class="chip-motivo" title="${m}">${m}</span>`).join('');
-        const conMot = al.faltas > 0
-            ? `<span class="badge-num badge-ambar">${al.faltas}</span>`
+        const conMot = al.conMotivo > 0
+            ? `<span class="badge-num badge-ambar">${al.conMotivo}</span>`
             : `<span class="badge-num badge-verde">0</span>`;
         const tooltip = al.diasHabiles ? `title="Sobre ${al.diasHabiles} días hábiles"` : '';
         html += `
@@ -1009,13 +1105,15 @@ document.addEventListener('keydown', e => {
 // --- INIT ---
  
 document.addEventListener('DOMContentLoaded', () => {
-    const inp = document.getElementById('password-input');
-    if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarPassword(); });
- 
+    ['prece-nombre-input', 'prece-email-input', 'prece-dni-input'].forEach(id => {
+        const inp = document.getElementById(id);
+        if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarDatosPreceptoria(); });
+    });
+
     if (sessionStorage.getItem('prece_auth') === 'true') {
         document.getElementById('login-screen').style.display = 'none';
         document.getElementById('panel-screen').style.display  = 'block';
-        cambiarPestania('alumnos');
+        cambiarPestania('avisos');
     }
 });
  

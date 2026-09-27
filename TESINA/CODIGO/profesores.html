@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Krono | Profesores</title>
+    <link rel="icon" type="image/x-icon" href="favicon.png">
+    <link rel="stylesheet" href="profesores-style.css?v=2">
+    <script>
+        // Prevenir flash blanco en modo oscuro
+        if (localStorage.getItem('krono-dark') === '1') {
+            document.documentElement.classList.add('dark-pre');
+            document.addEventListener('DOMContentLoaded', () => document.body.classList.add('dark-mode'));
+        }
+    </script>
+</head>
+<body>
+    <div class="bg-blur"></div>
+    <div class="layout">
+
+        <header class="sidebar">
+            <div class="logo-top">
+                <a href="Index.html" class="logo-top">
+                    <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
+                </a>
+            </div>
+            <nav class="nav-icons">
+                <a href="alumno.html" class="nav-item">
+                    <img src="icono-alumno.png" alt="Estudiantes">
+                    <span class="nav-label">Estudiantes</span>
+                </a>
+                <a href="preceptoria.html" class="nav-item">
+                    <img src="icono-prece.png" alt="Preceptoría">
+                    <span class="nav-label">Preceptoría</span>
+                </a>
+                <a href="directivos.html" class="nav-item">
+                    <img src="icono-directivos.png" alt="Directivos" class="nav-icon-dir-img">
+                    <span class="nav-label">Directivos</span>
+                </a>
+                <a href="profesores.html" class="nav-item active">
+                    <span class="nav-icon-profes-wrap">
+                        <img src="Icono-profes.png" alt="Profesores" class="nav-icon-profes-img icon-claro">
+                        <img src="Icono-profes-blanco.png" alt="Profesores" class="nav-icon-profes-img icon-oscuro">
+                    </span>
+                    <span class="nav-label">Profesores</span>
+                </a>
+            </nav>
+        </header>
+
+        <main class="main-content flex-center">
+            <div class="prof-container">
+                <img src="titulo-krono-imagen.png" alt="KRONO" class="krono-header-main">
+
+                <!-- ══════════ PANTALLA DE LOGIN ══════════ -->
+                <div id="login-screen">
+                    <h1 class="section-title-prof">Acceso Profesores</h1>
+                    <p class="subtitle-prof" id="login-subtitle">Ingresá tu correo institucional y tu nombre completo</p>
+
+                    <!-- Paso 1: correo + nombre -->
+                    <div class="login-card" id="login-paso-datos">
+                        <input type="email" id="login-email" placeholder="Correo institucional"
+                               class="login-input" autocomplete="off">
+                        <input type="text" id="login-nombre" placeholder="Nombre completo"
+                               class="login-input" autocomplete="off" style="margin-top:10px;">
+                        <p id="login-error" class="login-error" style="display:none;"></p>
+                        <button type="button" class="btn-login" id="btn-solicitar-codigo">Enviar código</button>
+                    </div>
+
+                    <!-- Paso 2: código recibido por mail -->
+                    <div class="login-card" id="login-paso-codigo" style="display:none;">
+                        <p class="login-codigo-info">Te enviamos un código a <strong id="login-email-mostrado"></strong></p>
+                        <input type="text" id="login-codigo" placeholder="Código de 6 dígitos"
+                               class="login-input" maxlength="6" inputmode="numeric" autocomplete="off">
+                        <p id="login-codigo-error" class="login-error" style="display:none;"></p>
+                        <button type="button" class="btn-login" id="btn-verificar-codigo">Verificar código</button>
+                        <button type="button" class="wizard-btn-atras" id="btn-reenviar-codigo" style="display:block; margin:10px auto 0;">Reenviar código</button>
+                    </div>
+                </div>
+
+                <!-- ══════════ PANEL DE PROFESORES ══════════ -->
+                <div id="panel-screen" style="display:none;">
+                    <div class="panel-header-row">
+                        <div>
+                            <h1 class="section-title-prof" style="margin-bottom:0;">Panel de Profesores</h1>
+                            <p class="panel-saludo" id="panel-saludo"></p>
+                        </div>
+                        <button class="btn-logout" onclick="cerrarSesion()">Cerrar sesión</button>
+                    </div>
+
+                    <!-- Contenido de notas: aparece apenas se ingresa al panel -->
+                    <div id="panel-notas-contenido" style="width:100%;">
+
+                        <!-- ══════════ ASISTENTE DE TARJETAS ══════════ -->
+                        <div id="wizard-wrap" class="wizard-wrap">
+
+                            <div class="wizard-progress" id="wizard-progress"></div>
+
+                            <div class="wizard-viewport">
+                                <div class="wizard-track" id="wizard-track">
+
+                                    <!-- Paso 1: Nombre -->
+                                    <section class="wizard-step" data-step="0">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">1</span>
+                                            <h2 class="wizard-pregunta">¿Cuál es tu nombre?</h2>
+                                            <p class="wizard-ayuda">Escribí tu nombre de profesor.</p>
+                                            <input type="text" id="wiz-nombre" class="aviso-input" placeholder="Nombre del profesor" autocomplete="off">
+                                            <p class="login-error" id="wiz-error-0" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <span></span>
+                                                <button class="btn-login wizard-btn-siguiente" onclick="wizardSiguiente()">Siguiente →</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Paso 2: Materia + Trimestre -->
+                                    <section class="wizard-step" data-step="1">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">2</span>
+                                            <h2 class="wizard-pregunta">¿Qué materia y trimestre?</h2>
+                                            <p class="wizard-ayuda">Seleccioná la materia de la lista.</p>
+                                            <select id="wiz-materia" class="aviso-select">
+                                                <option value="">— Seleccioná una materia —</option>
+                                            </select>
+                                            <input type="text" id="wiz-materia-otra" class="aviso-input" placeholder="Escribí el nombre de la materia" style="display:none; margin-top:8px;">
+                                            <select id="wiz-trimestre" class="aviso-select" style="margin-top:12px;">
+                                                <option value="1er Trimestre">1er Trimestre</option>
+                                                <option value="2do Trimestre">2do Trimestre</option>
+                                                <option value="3er Trimestre">3er Trimestre</option>
+                                            </select>
+                                            <p class="login-error" id="wiz-error-1" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
+                                                <button class="btn-login wizard-btn-siguiente" onclick="wizardSiguiente()">Siguiente →</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Paso 3: Curso -->
+                                    <section class="wizard-step" data-step="2">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">3</span>
+                                            <h2 class="wizard-pregunta">¿Qué curso?</h2>
+                                            <p class="wizard-ayuda">Seleccioná el curso (1ro a 6to).</p>
+                                            <select id="wiz-curso" class="aviso-select">
+                                                <option value="">— Seleccioná un curso —</option>
+                                                <option value="1">1° Año</option>
+                                                <option value="2">2° Año</option>
+                                                <option value="3">3° Año</option>
+                                                <option value="4">4° Año</option>
+                                                <option value="5">5° Año</option>
+                                                <option value="6">6° Año</option>
+                                            </select>
+                                            <p class="login-error" id="wiz-error-2" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
+                                                <button class="btn-login wizard-btn-siguiente" onclick="wizardSiguiente()">Siguiente →</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Paso 4: Alumno(s) -->
+                                    <section class="wizard-step" data-step="3">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">4</span>
+                                            <h2 class="wizard-pregunta">Seleccioná uno o más estudiantes</h2>
+                                            <p class="wizard-ayuda">Buscá y tildá a los alumnos de la lista. Podés elegir varios para cargarles la misma nota.</p>
+                                            <input type="text" id="wiz-alumno-buscar" class="aviso-input" placeholder="Buscar estudiante...">
+                                            <div id="wiz-alumno-lista" class="wizard-alumno-lista">
+                                                <p class="instruccion">Elegí un curso primero</p>
+                                            </div>
+                                            <p class="wizard-ayuda" id="wiz-alumno-contador" style="margin-top:6px;"></p>
+                                            <p class="login-error" id="wiz-error-3" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
+                                                <button class="btn-login wizard-btn-siguiente" onclick="wizardSiguiente()">Siguiente →</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Paso 5: Nota -->
+                                    <section class="wizard-step" data-step="4">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">5</span>
+                                            <h2 class="wizard-pregunta">Seleccioná la nota</h2>
+                                            <p class="wizard-ayuda">Tocá la nota correspondiente.</p>
+                                            <div id="wiz-nota-grid" class="wizard-nota-grid"></div>
+                                            <button type="button" class="wizard-link-decimal" id="wiz-decimal-toggle" onclick="mostrarNotaDecimal()">Usar una nota con decimales</button>
+                                            <input type="number" id="wiz-nota-decimal" class="aviso-input" min="1" max="10" step="0.01" placeholder="Ej: 8.5" style="display:none; margin-top:8px;">
+                                            <textarea id="wiz-observacion" class="aviso-textarea" placeholder="Observación (opcional)" style="margin-top:12px;"></textarea>
+                                            <p class="login-error" id="wiz-error-4" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
+                                                <button class="btn-login wizard-btn-siguiente" onclick="cargarNotaWizard()">Cargar nota</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                </div>
+                            </div>
+
+                            <button type="button" class="wizard-skip" onclick="saltarWizard()">Saltar → <span class="wizard-skip-sub">(Lleva directo al panel de notas)</span></button>
+                        </div>
+
+                        <!-- ══════════ PANEL DE NOTAS POR MATERIA ══════════ -->
+                        <div id="notas-panel-materia" style="display:none; width:100%;">
+
+                            <div class="materia-nav">
+                                <button type="button" class="materia-flecha" onclick="materiaAnterior()">‹</button>
+                                <h2 class="materia-nombre" id="materia-actual-nombre">—</h2>
+                                <button type="button" class="materia-flecha" onclick="materiaSiguiente()">›</button>
+                            </div>
+
+                            <div class="curso-pill-nav">
+                                <button type="button" class="curso-pill-flecha" onclick="cursoPanelAnterior()">‹</button>
+                                <span class="curso-pill" id="curso-panel-label">—</span>
+                                <button type="button" class="curso-pill-flecha" onclick="cursoPanelSiguiente()">›</button>
+                            </div>
+
+                            <div class="display-area" style="padding:1.5rem;">
+                                <div id="tabla-notas-contenedor" style="width:100%;">
+                                    <p class="instruccion">Cargando...</p>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn-logout" style="margin-top:1.5rem;" onclick="mostrarWizardDeNuevo()">+ Cargar otra nota</button>
+                        </div>
+
+                    </div>
+
+                </div><!-- /panel-screen -->
+            </div><!-- /prof-container -->
+        </main>
+    </div>
+
+    <!-- ══════════ MODAL EDICIÓN DE NOTA ══════════ -->
+    <div id="nota-modal-overlay">
+        <div class="docs-modal-backdrop" onclick="cerrarNotaModal()"></div>
+        <div class="docs-modal-box">
+            <button class="lightbox-cerrar" onclick="cerrarNotaModal()">✕</button>
+            <div class="docs-modal-header">
+                <p class="docs-modal-alumno" id="edit-nota-alumno-nombre">Editar nota</p>
+            </div>
+            <div class="docs-modal-lista">
+                <div class="aviso-campo">
+                    <label class="aviso-label">Materia</label>
+                    <input type="text" id="edit-nota-materia" class="aviso-input">
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label">Trimestre</label>
+                    <select id="edit-nota-trimestre" class="aviso-select">
+                        <option value="1er Trimestre">1er Trimestre</option>
+                        <option value="2do Trimestre">2do Trimestre</option>
+                        <option value="3er Trimestre">3er Trimestre</option>
+                    </select>
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label">Nota (1 a 10)</label>
+                    <input type="number" id="edit-nota-valor" class="aviso-input" min="1" max="10" step="0.01">
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label">Observación</label>
+                    <textarea id="edit-nota-observacion" class="aviso-textarea"></textarea>
+                </div>
+                <p id="edit-nota-error" class="login-error" style="display:none;"></p>
+                <button class="btn-login" onclick="guardarEdicionNota()">Guardar cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════ MODAL RECUPERATORIO ══════════ -->
+    <div id="recu-modal-overlay">
+        <div class="docs-modal-backdrop" onclick="cerrarRecuModal()"></div>
+        <div class="docs-modal-box">
+            <button class="lightbox-cerrar" onclick="cerrarRecuModal()">✕</button>
+            <div class="docs-modal-header">
+                <p class="docs-modal-alumno" id="recu-modal-alumno-nombre">Recuperatorio</p>
+            </div>
+            <div class="docs-modal-lista">
+                <div class="aviso-campo">
+                    <label class="aviso-label">N° de evaluación</label>
+                    <input type="number" id="recu-numero" class="aviso-input" min="1" step="1" placeholder="Ej: 1">
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label">Título</label>
+                    <input type="text" id="recu-titulo" class="aviso-input" placeholder="Ej: Recuperatorio trimestral">
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label">Nota (1 a 10)</label>
+                    <input type="number" id="recu-valor" class="aviso-input" min="1" max="10" step="0.01">
+                </div>
+                <p id="recu-modal-error" class="login-error" style="display:none;"></p>
+                <button class="btn-login" onclick="guardarRecuperatorio()">Guardar recuperatorio</button>
+                <button type="button" class="btn-eliminar-nota" id="recu-modal-quitar" style="margin-top:8px; display:none;" onclick="quitarRecuperatorioDesdeModal()">Quitar recuperatorio</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="profesores-script.js?v=2"></script>
+</body>
+</html>

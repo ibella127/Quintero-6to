@@ -11,6 +11,7 @@ import csv
 import io
 from flask import make_response
 from datetime import date, timedelta
+import unicodedata
 
 app = Flask(__name__)
 CORS(app)
@@ -30,6 +31,19 @@ EMAIL_REMITENTE = "ummaleyria09@gmail.com"
 EMAIL_APP_PASSWORD = "paew fcqi xmik mgng"  # ── Modificar cuando la web se trabe
 
 otp_store = {}
+otp_store_staff = {}  # OTP de Profesores, separado del de alumnos
+
+
+def _normalizar(txt):
+    """minúsculas, sin acentos y sin espacios de más — para comparar nombres/gmails con tolerancia."""
+    txt = (txt or '').strip().lower()
+    txt = unicodedata.normalize('NFKD', txt).encode('ascii', 'ignore').decode('ascii')
+    return ' '.join(txt.split())
+
+
+def _normalizar_dni(txt):
+    """deja solo los dígitos, para comparar '28.650.621' con '28650621' sin problema."""
+    return ''.join(ch for ch in (txt or '') if ch.isdigit())
 
 def get_connection():
     return pymysql.connect(**DB)
@@ -410,7 +424,11 @@ def _generar_faltas(anio):
         conn.close()
 
 def _listado_faltas_curso(anio):
-    """Genera (si hace falta) y devuelve la cantidad de faltas por alumno de un curso."""
+    """Genera (si hace falta) y devuelve, por alumno de un curso, el total de
+    faltas, cuántas de esas faltas tienen un motivo justificado cargado
+    (tabla `motivos_falta`, cruzado por fecha) y los motivos más frecuentes."""
+    from collections import Counter
+
     _generar_faltas(anio)
 
     inicio = date(date.today().year, 3, 1)
@@ -428,14 +446,27 @@ def _listado_faltas_curso(anio):
             """, (anio,))
             alumnos = c.fetchall()
 
+            # Faltas totales por alumno (con su fecha, para cruzar con motivos)
             c.execute("""
-                SELECT f.id_alumno, COUNT(*) AS total
+                SELECT f.id_alumno, f.fecha
                 FROM faltas f
                 JOIN alumnos a ON f.id_alumno = a.id_alumno
                 WHERE a.id_curso = %s AND f.fecha BETWEEN %s AND %s
-                GROUP BY f.id_alumno
             """, (anio, inicio, ayer))
-            faltas_map = {r['id_alumno']: r['total'] for r in c.fetchall()}
+            faltas_fechas_map = {}
+            for r in c.fetchall():
+                faltas_fechas_map.setdefault(r['id_alumno'], set()).add(r['fecha'])
+
+            # Motivos de falta cargados por el alumno (fecha + texto del motivo)
+            c.execute("""
+                SELECT mf.id_alumno, mf.fecha, mf.motivo
+                FROM motivos_falta mf
+                JOIN alumnos a ON mf.id_alumno = a.id_alumno
+                WHERE a.id_curso = %s
+            """, (anio,))
+            motivos_por_alumno = {}
+            for r in c.fetchall():
+                motivos_por_alumno.setdefault(r['id_alumno'], []).append(r)
 
             if inicio > ayer:
                 dias_habiles = 0
@@ -448,14 +479,28 @@ def _listado_faltas_curso(anio):
                        and (inicio + timedelta(days=i)) not in feriados_set
                 )
 
-        return [{
-            "id_alumno":    al['id_alumno'],
-            "nombre":       al['nombre'],
-            "apellido":     al['apellido'],
-            "gmail":        al['gmail'],
-            "ausencias":    faltas_map.get(al['id_alumno'], 0),
-            "dias_habiles": dias_habiles
-        } for al in alumnos]
+        resultado = []
+        for al in alumnos:
+            id_al        = al['id_alumno']
+            fechas_falta = faltas_fechas_map.get(id_al, set())
+            motivos_al   = motivos_por_alumno.get(id_al, [])
+
+            # Solo cuenta como "con motivo" el motivo que corresponde a un día
+            # efectivamente marcado como falta (evita contar motivos sueltos).
+            con_motivo = len({m['fecha'] for m in motivos_al if m['fecha'] in fechas_falta})
+            top3 = [m for m, _ in Counter(m['motivo'] for m in motivos_al).most_common(3)]
+
+            resultado.append({
+                "id_alumno":        id_al,
+                "nombre":           al['nombre'],
+                "apellido":         al['apellido'],
+                "gmail":            al['gmail'],
+                "ausencias":        len(fechas_falta),
+                "con_motivo":       con_motivo,
+                "motivos_frecuentes": top3,
+                "dias_habiles":     dias_habiles
+            })
+        return resultado
     finally:
         conn.close()
 
@@ -548,6 +593,48 @@ def _init_tablas():
                 UNIQUE KEY uniq_falta (id_alumno, fecha),
                 FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
             )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS notas (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                id_alumno   INT NOT NULL,
+                materia     VARCHAR(100) NOT NULL,
+                trimestre   VARCHAR(20) NOT NULL,
+                nota        DECIMAL(4,2) NOT NULL,
+                observacion VARCHAR(300) DEFAULT NULL,
+                recu_numero   INT DEFAULT NULL,
+                recu_titulo   VARCHAR(150) DEFAULT NULL,
+                recu_nota     DECIMAL(4,2) DEFAULT NULL,
+                recu_creado_en TIMESTAMP NULL DEFAULT NULL,
+                creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+            )""")
+            # notas puede ya existir de antes sin las columnas de recuperatorio
+            # (CREATE TABLE IF NOT EXISTS no las agrega sola) — las sumamos a mano.
+            for _col_sql in (
+                "ALTER TABLE notas ADD COLUMN recu_numero INT DEFAULT NULL",
+                "ALTER TABLE notas ADD COLUMN recu_titulo VARCHAR(150) DEFAULT NULL",
+                "ALTER TABLE notas ADD COLUMN recu_nota DECIMAL(4,2) DEFAULT NULL",
+                "ALTER TABLE notas ADD COLUMN recu_creado_en TIMESTAMP NULL DEFAULT NULL",
+            ):
+                try:
+                    c.execute(_col_sql)
+                    conn.commit()
+                except Exception:
+                    pass  # ya existe la columna, no pasa nada
+
+            # ── PROFESORES / PRECEPTORÍA ──────────────────────────
+            # es_preceptor = TRUE  → entra por Preceptoría (gmail + nombre + apellido + DNI, sin OTP)
+            # es_preceptor = FALSE → entra por Profesores  (gmail + nombre completo, con OTP por mail)
+            c.execute("""CREATE TABLE IF NOT EXISTS profesores (
+                id_profesor  INT AUTO_INCREMENT PRIMARY KEY,
+                nombre       VARCHAR(120) NOT NULL,
+                apellido     VARCHAR(120) NOT NULL,
+                gmail        VARCHAR(150) NOT NULL UNIQUE,
+                dni          VARCHAR(15) DEFAULT NULL,
+                materias     VARCHAR(300) DEFAULT NULL,
+                cursos       VARCHAR(100) DEFAULT NULL,
+                es_preceptor BOOLEAN NOT NULL DEFAULT FALSE,
+                creado_en    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )""")
 
             FERIADOS_FIJOS = [
                 ('2026-01-01', 'Año Nuevo'),
@@ -573,6 +660,47 @@ def _init_tablas():
                     "INSERT IGNORE INTO feriados (fecha, descripcion, tipo) VALUES (%s, %s, 'nacional')",
                     (fecha, desc)
                 )
+
+            # Semilla de profesores/preceptoría (planilla "Lista de profes").
+            # INSERT IGNORE: si el gmail ya existe no lo pisa, así se puede
+            # re-ejecutar sin duplicar ni perder ediciones manuales.
+            PROFESORES_SEED = [
+                ('Leonardo Osmar', 'Calvi', 'localvi@escuelasproa.edu.ar', None, 'Física / Biología / Química / Club de ciencias', '1ro - 2do - 3ro - 4to - 5to', False),
+                ('Alexia', 'Galfre', 'agalfre@escuelasproa.edu.ar', None, 'Química', '6to - 2do', False),
+                ('Mariana', 'Gubaro', 'mgubaro@escuelasproa.edu.ar', None, 'Matemáticas', '6to', False),
+                ('Carmen', 'Devallis', 'cdevallis@escuelasproa.edu.ar', None, 'Matemáticas / Sistema y entornos', '1ro - 2do', False),
+                ('Verónia', 'Hepp', 'vhepp@escuelasproa.edu.ar', None, 'Matemáticas', '4to - 5to', False),
+                ('Valeria Nieves', 'Villalba', 'vnvillalba@escuelasproa.edu.ar', None, 'Programación / Estructura y almacenamiento de datos / Club de ciencias / Robótica', '3ro - 4to - 5to', False),
+                ('Pablo', 'Torres', 'pmtorres@escuelasproa.edu.ar', None, 'Club de ciencias / Diseño de interfaces y usabilidad / Desarrollo de Apps móviles / Algoritmo y programación', '2do - 6to - 4to - 3ro', False),
+                ('Marysol', 'Tello', 'matello@escuelasproa.edu.ar', None, 'Programación / Desarrollo de Apps móviles / Testing', '6to', False),
+                ('Agustina', 'Seleme', 'asoledadseleme@escuelasproa.edu.ar', None, 'Inglés', '6to - 5to', False),
+                ('Natalia', 'Quinteros', 'nataliaquinteros@escuelasproa.edu.ar', None, 'Inglés / TIA', '6to - 5to - 4to', False),
+                ('Debora', 'Buratti', 'dburatti@escuelasproa.edu.ar', None, 'Lengua y Literatura', '1ro - 2do - 3ro - 5to - 6to', False),
+                ('Florencia', 'Felici', 'mffelici@escuelasproa.edu.ar', None, 'FVT / Ciudadanía y política', '6to', False),
+                ('Marina', 'Badino', 'mbadino@escuelasproa.edu.ar', None, 'Teatro / Club de arte / Danza', '1ro - 3ro - 4to - 6to', False),
+                ('Yoavi', 'Costamagna', 'ycostamagna@escuelasproa.edu.ar', None, 'Música', '5to', False),
+                ('Paula', 'Tresca', 'ptresca@escuelasproa.edu.ar', None, 'Artística', '4to', False),
+                ('Edgar', 'Busto', 'edgarbusto@escuelasproa.edu.ar', None, 'Educación Física / Club', '6to', False),
+                ('Sofia', 'Phileas', 'sphileas@escuelasproa.edu.ar', None, 'Educación Física / Club', '6to - 1ro', False),
+                ('Blas', 'Bonsano', 'bbonzano@escuelasproa.edu.ar', None, 'Geografía', '1ro - 2do - 3ro - 4to', False),
+                ('Soledad', 'Muñoz', 'msmunoz@escuelasproa.edu.ar', None, 'Ciudadanía y Participación / Filosofía', '6to', False),
+                ('Facundo', 'Martinez', 'fmartinez@escuelasproa.edu.ar', None, 'Inglés / TIA', '1ro', False),
+                ('Meliza', 'Ferroni', 'mferroni@escuelasproa.edu.ar', None, 'Tecnología', '3ro', False),
+                ('Carina', 'Bruera', 'cabruera@escuelasproa.edu.ar', None, 'Educación Física / Club', '2do - 3ro', False),
+                ('Juan Pablo', 'Freggiaro', 'jpfreggiaro@escuelasproa.edu.ar', None, 'Educación Física / Club', '5to', False),
+                ('Evelin', 'Menazzi', 'ermenazzi@escuelasproa.edu.ar', None, 'Lengua y Literatura', '4to', False),
+                ('Julieta', 'Demichellis', 'jdemichelis@escuelasproa.edu.ar', None, 'Tecnología', '1ro - 2do', False),
+                ('Emanuel', 'Pacho', 'epacho@escuelasproa.edu.ar', '28650621', None, None, True),
+                ('Lorena', 'Pizarro', 'lspizarro@escuelasproa.edu.ar', '27541557', None, None, True),
+                ('Antonella', 'Monchietti', 'advmonchietti@escuelasproa.edu.ar', None, 'Club de arte', '2do', False),
+                ('Sofi', 'Druetta', 'sfdrueta@escuelasproa.edu.ar', None, 'Coordinadora', None, False),
+                ('Elisa', 'Selva', 'ebselva@escuelasproa.edu.ar', None, 'FVT / Ciudadanía', '5to', False),
+            ]
+            for nombre, apellido, gmail, dni, materias, cursos, es_prece in PROFESORES_SEED:
+                c.execute("""
+                    INSERT IGNORE INTO profesores (nombre, apellido, gmail, dni, materias, cursos, es_preceptor)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                """, (nombre, apellido, gmail, dni, materias, cursos, es_prece))
         conn.commit()
         print("✅ Tablas auxiliares listas.")
     finally: conn.close()
@@ -612,7 +740,7 @@ def get_motivos():
     conn = get_connection()
     try:
         with conn.cursor() as c:
-            sql = """SELECT p.nombre,p.apellido,p.gmail,m.fecha,m.motivo,m.certificado
+            sql = """SELECT m.id, p.nombre,p.apellido,p.gmail,m.fecha,m.motivo,m.certificado
                        FROM motivos_tardanza m
                        JOIN alumnos a ON m.id_alumno=a.id_alumno
                        JOIN personas p ON a.id_persona=p.id_persona"""
@@ -627,11 +755,34 @@ def get_motivos():
             k = f['gmail']
             if k not in agrup:
                 agrup[k] = {'gmail':f['gmail'],'nombre':f['nombre'],'apellido':f['apellido'],'motivos':[]}
-            agrup[k]['motivos'].append({'fecha':str(f['fecha']),'motivo':f['motivo'],'certificado':f['certificado']})
+            agrup[k]['motivos'].append({'id':f['id'],'fecha':str(f['fecha']),'motivo':f['motivo'],'certificado':f['certificado']})
         return jsonify(list(agrup.values()))
     except Exception as e:
         return jsonify({"error":str(e)}), 500
     finally: conn.close()
+
+@app.route('/prece/eliminar-motivo/<int:motivo_id>', methods=['DELETE'])
+def eliminar_motivo(motivo_id):
+    """Preceptor elimina un motivo de tardanza (y su certificado, si tenía)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT certificado FROM motivos_tardanza WHERE id = %s", (motivo_id,))
+            row = c.fetchone()
+        if not row:
+            return jsonify({"error": "Motivo no encontrado"}), 404
+        if row['certificado']:
+            cert_path = os.path.join(CERTIFICADOS_DIR, row['certificado'])
+            if os.path.exists(cert_path):
+                os.remove(cert_path)
+        with conn.cursor() as c:
+            c.execute("DELETE FROM motivos_tardanza WHERE id = %s", (motivo_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
 
 # ══ FOTOS ══════════════════════════════════════════════════════
 
@@ -1528,12 +1679,15 @@ def dir_asistencia_hoy(anio):
 @app.route('/dir/faltas-alumno/<int:anio>', methods=['GET'])
 def dir_faltas_alumno(anio):
     """
-    Devuelve la cantidad de días ausentes por alumno.
+    Devuelve, por alumno, la cantidad de días ausentes, cuántas de esas
+    ausencias tienen un motivo justificado cargado (tabla `motivos_falta`,
+    cruzado por fecha) y los motivos más frecuentes.
     Solo cuenta como "día de clase" los días en que AL MENOS UN alumno
     del curso registró ingreso en el escáner. Así evitamos contar como
     ausencia los días en que el escáner no funcionó o no hubo clases.
     """
     from datetime import date
+    from collections import Counter
     inicio = date(date.today().year, 3, 1).isoformat()
 
     conn = get_connection()
@@ -1557,23 +1711,45 @@ def dir_faltas_alumno(anio):
             """, (anio, inicio))
             ingresos_rows = c.fetchall()
 
+            # Motivos de falta cargados por los alumnos del curso
+            c.execute("""
+                SELECT mf.id_alumno, mf.fecha, mf.motivo
+                FROM motivos_falta mf
+                JOIN alumnos a ON mf.id_alumno = a.id_alumno
+                WHERE a.id_curso = %s
+            """, (anio,))
+            motivos_rows = c.fetchall()
+
         # Set de (id_alumno, fecha_str) con ingreso
         ingresos_set = {(r['id_alumno'], str(r['fecha'])) for r in ingresos_rows}
 
         # Días reales de clase = fechas con al menos 1 ingreso del curso
         dias_con_clases = sorted({str(r['fecha']) for r in ingresos_rows})
 
+        motivos_por_alumno = {}
+        for r in motivos_rows:
+            motivos_por_alumno.setdefault(r['id_alumno'], []).append(
+                {'fecha': str(r['fecha']), 'motivo': r['motivo']}
+            )
+
         resultado = []
         for al in alumnos:
             id_al = al['id_alumno']
-            ausencias = sum(1 for dia in dias_con_clases if (id_al, dia) not in ingresos_set)
+            fechas_ausencia = {dia for dia in dias_con_clases if (id_al, dia) not in ingresos_set}
+            motivos_al = motivos_por_alumno.get(id_al, [])
+
+            con_motivo = len({m['fecha'] for m in motivos_al if m['fecha'] in fechas_ausencia})
+            top3 = [m for m, _ in Counter(m['motivo'] for m in motivos_al).most_common(3)]
+
             resultado.append({
-                "id_alumno":    id_al,
-                "nombre":       al['nombre'],
-                "apellido":     al['apellido'],
-                "gmail":        al['gmail'],
-                "ausencias":    ausencias,
-                "dias_habiles": len(dias_con_clases)
+                "id_alumno":          id_al,
+                "nombre":             al['nombre'],
+                "apellido":           al['apellido'],
+                "gmail":              al['gmail'],
+                "ausencias":          len(fechas_ausencia),
+                "con_motivo":         con_motivo,
+                "motivos_frecuentes": top3,
+                "dias_habiles":       len(dias_con_clases)
             })
 
         return jsonify(resultado)
@@ -1586,11 +1762,16 @@ def dir_faltas_alumno(anio):
 @app.route('/dir/tardanzas-alumno/<int:anio>', methods=['GET'])
 def dir_tardanzas_alumno(anio):
     """
-    Devuelve la cantidad de llegadas tarde por alumno en el año lectivo,
-    basado en registros reales del escáner (tabla ingresos, hora > 07:40).
-    También incluye los motivos de los avisos de preceptoría del mismo alumno.
+    Devuelve, por alumno, la cantidad de llegadas tarde reales (escáner,
+    tabla ingresos, hora > 07:40), cuántas de esas tardanzas tienen un
+    motivo cargado por el propio alumno para la misma fecha (tabla
+    motivos_tardanza, cruzado por fecha) y los motivos más frecuentes.
+    Importante: Directivos solo usa motivos subidos por los ALUMNOS.
+    Los avisos cargados por preceptoría (avisos_tardanza) son harina de
+    otro costal y no entran acá.
     """
     from datetime import date
+    from collections import Counter
     HORA_ENTRADA = '07:40'
     inicio = date(date.today().year, 3, 1).isoformat()
 
@@ -1606,50 +1787,52 @@ def dir_tardanzas_alumno(anio):
             """, (anio,))
             alumnos = c.fetchall()
 
-            # Ingresos tarde del período
+            # Ingresos tarde del período (fecha real de cada tardanza)
             c.execute("""
-                SELECT i.id_alumno, LEFT(i.hora, 5) AS hhmm, i.fecha
+                SELECT i.id_alumno, i.fecha
                 FROM ingresos i
                 JOIN alumnos a ON i.id_alumno = a.id_alumno
                 WHERE a.id_curso = %s AND i.fecha >= %s AND LEFT(i.hora, 5) > %s
             """, (anio, inicio, HORA_ENTRADA))
             tard_rows = c.fetchall()
 
-            # Avisos de preceptoría (para obtener motivos)
+            # Motivos subidos por los propios alumnos (con fecha, para cruzar con la tardanza real)
             c.execute("""
-                SELECT av.id_alumno, av.motivo
-                FROM avisos_tardanza av
-                JOIN alumnos a ON av.id_alumno = a.id_alumno
-                WHERE a.id_curso = %s AND av.fecha >= %s
+                SELECT m.id_alumno, m.fecha, m.motivo
+                FROM motivos_tardanza m
+                JOIN alumnos a ON m.id_alumno = a.id_alumno
+                WHERE a.id_curso = %s AND m.fecha >= %s
             """, (anio, inicio))
-            avisos_rows = c.fetchall()
+            motivos_rows = c.fetchall()
 
-        # Agrupar tardanzas por alumno
-        tard_map = {}
+        # Fechas de tardanza real por alumno
+        tard_fechas_map = {}
         for r in tard_rows:
-            tard_map.setdefault(r['id_alumno'], 0)
-            tard_map[r['id_alumno']] += 1
+            tard_fechas_map.setdefault(r['id_alumno'], set()).add(str(r['fecha']))
 
-        # Agrupar motivos de avisos por alumno
-        motivos_map = {}
-        for r in avisos_rows:
-            motivos_map.setdefault(r['id_alumno'], [])
-            if r['motivo']:
-                motivos_map[r['id_alumno']].append(r['motivo'])
+        # Motivos (fecha + texto) subidos por cada alumno
+        motivos_por_alumno = {}
+        for r in motivos_rows:
+            motivos_por_alumno.setdefault(r['id_alumno'], []).append(
+                {'fecha': str(r['fecha']), 'motivo': r['motivo']}
+            )
 
         resultado = []
         for al in alumnos:
             id_al = al['id_alumno']
-            motivos = motivos_map.get(id_al, [])
-            # Top 3 motivos más frecuentes
-            from collections import Counter
-            top3 = [m for m, _ in Counter(motivos).most_common(3)]
+            fechas_tarde = tard_fechas_map.get(id_al, set())
+            motivos_al = motivos_por_alumno.get(id_al, [])
+
+            con_motivo = len({m['fecha'] for m in motivos_al if m['fecha'] in fechas_tarde})
+            top3 = [m for m, _ in Counter(m['motivo'] for m in motivos_al if m['motivo']).most_common(3)]
+
             resultado.append({
                 "id_alumno":  id_al,
                 "nombre":     al['nombre'],
                 "apellido":   al['apellido'],
                 "gmail":      al['gmail'],
-                "tardanzas":  tard_map.get(id_al, 0),
+                "tardanzas":  len(fechas_tarde),
+                "con_motivo": con_motivo,
                 "topMotivos": top3
             })
 
@@ -1950,6 +2133,295 @@ def dir_tendencias_faltas(anio):
         return jsonify(resultado)
     except Exception as e:
         print(f"❌ /dir/tendencias-faltas: {e}")
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════
+#  LOGIN Y ACCESO A PROFESORES (gmail + nombre completo + OTP)
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/profesores/solicitar-otp', methods=['POST'])
+def solicitar_otp_profesor():
+    data = request.get_json(force=True) or {}
+    email  = (data.get('email') or '').strip().lower()
+    nombre_ingresado = data.get('nombre') or ''
+
+    if not email or not nombre_ingresado.strip():
+        return jsonify({"error": "Completá tu correo y tu nombre."}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT nombre, apellido, gmail, materias, cursos
+                FROM profesores
+                WHERE gmail = %s AND es_preceptor = FALSE
+            """, (email,))
+            prof = c.fetchone()
+
+        if not prof:
+            return jsonify({"error": "Correo no registrado como profesor."}), 404
+
+        nombre_bd = _normalizar(f"{prof['nombre']} {prof['apellido']}")
+        nombre_bd_inv = _normalizar(f"{prof['apellido']} {prof['nombre']}")
+        if _normalizar(nombre_ingresado) not in (nombre_bd, nombre_bd_inv):
+            return jsonify({"error": "El nombre no coincide con el correo ingresado."}), 401
+
+        codigo = str(random.randint(100000, 999999))
+        otp_store_staff[email] = {"codigo": codigo, "expira": time.time() + 300}
+
+        print("\n" + "=" * 40)
+        print(f"🔑 CÓDIGO PROFESOR PARA {email}: {codigo}")
+        print("=" * 40 + "\n")
+
+        mail_ok = enviar_otp(email, codigo, prof['nombre'])
+
+        respuesta = {"ok": True, "nombre": prof['nombre']}
+        if not mail_ok:
+            respuesta["codigo_dev"] = codigo  # solo aparece si el mail no llega
+        return jsonify(respuesta)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/verificar-otp', methods=['POST'])
+def verificar_otp_profesor():
+    data = request.get_json(force=True) or {}
+    email  = (data.get('email') or '').strip().lower()
+    codigo = (data.get('codigo') or '').strip()
+    entrada = otp_store_staff.get(email)
+
+    if not entrada or time.time() > entrada['expira'] or entrada['codigo'] != codigo:
+        return jsonify({"error": "Código incorrecto o vencido."}), 400
+
+    del otp_store_staff[email]  # se usa una sola vez
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT nombre, apellido, gmail, materias, cursos
+                FROM profesores
+                WHERE gmail = %s AND es_preceptor = FALSE
+            """, (email,))
+            return jsonify(c.fetchone())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ═══════════════════════════════════════════════════════════════
+#  LOGIN Y ACCESO A PRECEPTORÍA (gmail + nombre + apellido + DNI, sin OTP)
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/preceptoria/login', methods=['POST'])
+def login_preceptoria():
+    data = request.get_json(force=True) or {}
+    email    = (data.get('email') or '').strip().lower()
+    nombre   = data.get('nombre') or ''
+    apellido = data.get('apellido') or ''
+    dni      = data.get('dni') or ''
+
+    if not email or not nombre.strip() or not apellido.strip() or not dni.strip():
+        return jsonify({"error": "Completá correo, nombre, apellido y DNI."}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT nombre, apellido, gmail, dni
+                FROM profesores
+                WHERE gmail = %s AND es_preceptor = TRUE
+            """, (email,))
+            prece = c.fetchone()
+
+        if not prece:
+            return jsonify({"error": "Correo no registrado como preceptor/a."}), 404
+
+        coincide_nombre   = _normalizar(nombre) == _normalizar(prece['nombre'])
+        coincide_apellido = _normalizar(apellido) == _normalizar(prece['apellido'])
+        coincide_dni      = _normalizar_dni(dni) == _normalizar_dni(prece['dni'] or '')
+
+        if not (coincide_nombre and coincide_apellido and coincide_dni):
+            return jsonify({"error": "Los datos no coinciden con los registrados."}), 401
+
+        return jsonify({
+            "ok": True,
+            "nombre": prece['nombre'],
+            "apellido": prece['apellido'],
+            "gmail": prece['gmail']
+        })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ══ NOTAS — PROFESORES ═══════════════════════════════════════
+
+@app.route('/profesores/notas', methods=['POST'])
+def crear_nota():
+    """Carga una nota nueva para un alumno."""
+    data = request.get_json(force=True) or {}
+    id_alumno   = data.get('id_alumno')
+    materia     = (data.get('materia') or '').strip()
+    trimestre   = (data.get('trimestre') or '').strip()
+    nota        = data.get('nota')
+    observacion = (data.get('observacion') or '').strip() or None
+
+    if not id_alumno or not materia or not trimestre or nota is None:
+        return jsonify({"error": "Faltan datos obligatorios (alumno, materia, trimestre, nota)"}), 400
+    try:
+        nota = float(nota)
+    except (TypeError, ValueError):
+        return jsonify({"error": "La nota debe ser un número"}), 400
+    if nota < 1 or nota > 10:
+        return jsonify({"error": "La nota debe estar entre 1 y 10"}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                INSERT INTO notas (id_alumno, materia, trimestre, nota, observacion)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (id_alumno, materia, trimestre, nota, observacion))
+        conn.commit()
+        return jsonify({"ok": True}), 201
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/notas/<int:anio>', methods=['GET'])
+def get_notas_curso(anio):
+    """Lista todas las notas cargadas para los alumnos de un curso."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT n.id, n.id_alumno, p.nombre, p.apellido,
+                       n.materia, n.trimestre, n.nota, n.observacion, n.creado_en,
+                       n.recu_numero, n.recu_titulo, n.recu_nota, n.recu_creado_en
+                FROM notas n
+                JOIN alumnos a  ON n.id_alumno = a.id_alumno
+                JOIN personas p ON a.id_persona = p.id_persona
+                WHERE a.id_curso = %s
+                ORDER BY p.apellido, p.nombre, n.trimestre, n.materia
+            """, (anio,))
+            return jsonify(c.fetchall())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/notas/<int:nota_id>/recuperatorio', methods=['PUT'])
+def guardar_recuperatorio(nota_id):
+    """Carga o edita la nota de un recuperatorio para una nota ya existente."""
+    data = request.get_json(force=True) or {}
+    numero = data.get('numero')
+    titulo = (data.get('titulo') or '').strip()
+    nota   = data.get('nota')
+
+    if numero is None or not titulo or nota is None:
+        return jsonify({"error": "Completá número de evaluación, título y nota"}), 400
+    try:
+        numero = int(numero)
+    except (TypeError, ValueError):
+        return jsonify({"error": "El número de evaluación debe ser un número"}), 400
+    try:
+        nota = float(nota)
+    except (TypeError, ValueError):
+        return jsonify({"error": "La nota debe ser un número"}), 400
+    if nota < 1 or nota > 10:
+        return jsonify({"error": "La nota debe estar entre 1 y 10"}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                UPDATE notas
+                   SET recu_numero=%s, recu_titulo=%s, recu_nota=%s, recu_creado_en=NOW()
+                 WHERE id=%s
+            """, (numero, titulo, nota, nota_id))
+            if c.rowcount == 0:
+                return jsonify({"error": "No se encontró la nota"}), 404
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/notas/<int:nota_id>/recuperatorio', methods=['DELETE'])
+def eliminar_recuperatorio(nota_id):
+    """Quita el recuperatorio cargado sobre una nota (no borra la nota en sí)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                UPDATE notas
+                   SET recu_numero=NULL, recu_titulo=NULL, recu_nota=NULL, recu_creado_en=NULL
+                 WHERE id=%s
+            """, (nota_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/notas/<int:nota_id>', methods=['PUT'])
+def editar_nota(nota_id):
+    """Edita una nota existente (materia, trimestre, nota, observación)."""
+    data = request.get_json(force=True) or {}
+    materia     = (data.get('materia') or '').strip()
+    trimestre   = (data.get('trimestre') or '').strip()
+    nota        = data.get('nota')
+    observacion = (data.get('observacion') or '').strip() or None
+
+    if not materia or not trimestre or nota is None:
+        return jsonify({"error": "Faltan datos obligatorios (materia, trimestre, nota)"}), 400
+    try:
+        nota = float(nota)
+    except (TypeError, ValueError):
+        return jsonify({"error": "La nota debe ser un número"}), 400
+    if nota < 1 or nota > 10:
+        return jsonify({"error": "La nota debe estar entre 1 y 10"}), 400
+
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                UPDATE notas SET materia=%s, trimestre=%s, nota=%s, observacion=%s
+                WHERE id=%s
+            """, (materia, trimestre, nota, observacion, nota_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/eliminar-nota/<int:nota_id>', methods=['DELETE'])
+def eliminar_nota(nota_id):
+    """Elimina una nota cargada."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("DELETE FROM notas WHERE id=%s", (nota_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
         conn.close()

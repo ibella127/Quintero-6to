@@ -162,6 +162,20 @@ body {
 }
 .nav-item:not(.active):hover .nav-icon-dir-img { transform: scale(1.12); }
 
+/* nav-icon-profes-img: el arte tiene más "aire" alrededor que los demás (es una escena,
+   no solo un personaje), así que se agranda un poco para que pese visualmente igual */
+.nav-icon-profes-img {
+    width: 50px; height: 50px; object-fit: contain;
+    margin: -4px 0;
+    filter: drop-shadow(0 2px 6px rgba(26,111,168,0.15));
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.nav-item.active .nav-icon-profes-img {
+    transform: scale(1.18);
+    filter: drop-shadow(0 0 8px rgba(75,163,217,0.5));
+}
+.nav-item:not(.active):hover .nav-icon-profes-img { transform: scale(1.12); }
+
 /* Label debajo del icono */
 .nav-label {
     font-family: 'DM Sans', sans-serif;
@@ -503,6 +517,7 @@ textarea { min-height: 120px; resize: none; }
     .side-img { width: 80px; }
     .nav-icons { gap: 1.8rem; }
     .nav-item img { width: 36px; height: 36px; }
+    .nav-icon-profes-img { width: 43px; height: 43px; margin: -3px 0; }
     .flip-card { height: 210px; }
     .flip-card-front p { font-size: 1.15rem; }
     .form-row { grid-template-columns: 1fr; }
@@ -801,27 +816,16 @@ body.dark-mode .krono-header-main {
     content: url('titulo-krono-imagen-blanco.png');
 }
 
-/* Ícono alumno en la nav */
-body.dark-mode .nav-item a[href*="alumno"] img,
-body.dark-mode a[href*="alumno"] .nav-item img,
+/* Íconos de nav en modo oscuro — uno por href, no depende del orden/posición */
 body.dark-mode .nav-item[href*="alumno"] img {
     content: url('icono-alumno-blanco.png');
 }
-
-/* Ícono preceptoría en la nav */
-body.dark-mode .nav-item a[href*="prece"] img,
-body.dark-mode a[href*="prece"] .nav-item img,
 body.dark-mode .nav-item[href*="prece"] img {
     content: url('icono-prece-blanco.png');
 }
-
-/* Los íconos de nav están dentro de <a class="nav-item"> > img */
-body.dark-mode .nav-icons .nav-item:first-child img {
-    content: url('icono-alumno-blanco.png');
-}
-body.dark-mode .nav-icons .nav-item:last-child img {
-    content: url('icono-prece-blanco.png');
-}
-body.dark-mode .nav-icons .nav-item:last-child img {
+body.dark-mode .nav-item[href*="directivos"] img {
     content: url('icono-directivos-blanco.png');
+}
+body.dark-mode .nav-item[href*="profesores"] img {
+    content: url('Icono-profes-blanco.png');
 }
