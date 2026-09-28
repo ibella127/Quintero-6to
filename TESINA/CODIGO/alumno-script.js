@@ -50,6 +50,10 @@
 //  CURSOR TRAIL — puntos que siguen al mouse
 // ══════════════════════════════════════════════
 (function () {
+    // En pantallas táctiles no hay mouse: sin esto los puntos quedan clavados
+    // en el centro de la pantalla, encima del contenido.
+    if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
+
     const TOTAL_DOTS = 18, DOT_SIZE = 7, EASE = 0.35;
     const COLORS = ['rgba(75,163,217,0.85)','rgba(26,111,168,0.75)','rgba(168,212,245,0.70)','rgba(75,163,217,0.55)'];
     const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -1238,3 +1242,49 @@ function descargarQR() {
             window.open(url, '_blank');
         });
 }
+
+
+// ══════════════════════════════════════════════
+//  MENÚ HAMBURGUESA — solo visible en pantallas chicas (ver CSS)
+// ══════════════════════════════════════════════
+(function () {
+    const header = document.querySelector('.sidebar');
+    const boton  = document.getElementById('menu-toggle');
+    const menu   = document.getElementById('nav-principal');
+    if (!header || !boton || !menu) return;
+
+    function setMenu(abierto) {
+        header.classList.toggle('menu-abierto', abierto);
+        boton.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        boton.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    // Abrir / cerrar con el botón
+    boton.addEventListener('click', () => {
+        setMenu(!header.classList.contains('menu-abierto'));
+    });
+
+    // Al tocar una opción se cierra (el enlace sigue funcionando normal)
+    menu.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', () => setMenu(false));
+    });
+
+    // Tocar fuera de la barra cierra el menú
+    document.addEventListener('click', e => {
+        if (!header.contains(e.target)) setMenu(false);
+    });
+
+    // Escape cierra el menú y devuelve el foco al botón
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && header.classList.contains('menu-abierto')) {
+            setMenu(false);
+            boton.focus();
+        }
+    });
+
+    // Si se agranda la pantalla (o se rota el celular) hasta modo escritorio, se resetea
+    const mq = window.matchMedia('(max-width: 768px)');
+    const alCambiar = e => { if (!e.matches) setMenu(false); };
+    if (mq.addEventListener) mq.addEventListener('change', alCambiar);
+    else mq.addListener(alCambiar);
+})();

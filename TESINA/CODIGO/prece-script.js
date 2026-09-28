@@ -49,6 +49,10 @@
 //  CURSOR TRAIL — puntos que siguen al mouse
 // ══════════════════════════════════════════════
 (function () {
+    // En pantallas táctiles no hay mouse: sin esto los puntos quedan clavados
+    // en el centro de la pantalla, encima del contenido.
+    if (window.matchMedia('(hover: none), (pointer: coarse)').matches) return;
+
     const TOTAL_DOTS = 18, DOT_SIZE = 7, EASE = 0.35;
     const COLORS = ['rgba(75,163,217,0.85)','rgba(26,111,168,0.75)','rgba(168,212,245,0.70)','rgba(75,163,217,0.55)'];
     const mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
@@ -119,6 +123,7 @@ function verificarDatosPreceptoria() {
             sessionStorage.setItem('prece_auth', 'true');
             sessionStorage.setItem('prece_nombre', `${body.nombre} ${body.apellido}`);
             cambiarPestania('avisos');
+            if (window.kronoTutorial) window.kronoTutorial.alIngresar();
         })
         .catch(() => {
             error.textContent = 'Error de conexión con el servidor.';
@@ -1350,3 +1355,525 @@ function eliminarAnuncio(id, btn) {
         })
         .catch(() => { btn.disabled = false; });
 }
+
+
+// ══════════════════════════════════════════════
+//  MENÚ HAMBURGUESA — solo visible en pantallas chicas (ver CSS)
+// ══════════════════════════════════════════════
+(function () {
+    const header = document.querySelector('.sidebar');
+    const boton  = document.getElementById('menu-toggle');
+    const menu   = document.getElementById('nav-principal');
+    if (!header || !boton || !menu) return;
+
+    function setMenu(abierto) {
+        header.classList.toggle('menu-abierto', abierto);
+        boton.setAttribute('aria-expanded', abierto ? 'true' : 'false');
+        boton.setAttribute('aria-label', abierto ? 'Cerrar menú' : 'Abrir menú');
+    }
+
+    // Abrir / cerrar con el botón
+    boton.addEventListener('click', () => {
+        setMenu(!header.classList.contains('menu-abierto'));
+    });
+
+    // Al tocar una opción se cierra (el enlace sigue funcionando normal)
+    menu.querySelectorAll('.nav-item').forEach(link => {
+        link.addEventListener('click', () => setMenu(false));
+    });
+
+    // Tocar fuera de la barra cierra el menú
+    document.addEventListener('click', e => {
+        if (!header.contains(e.target)) setMenu(false);
+    });
+
+    // Escape cierra el menú y devuelve el foco al botón
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape' && header.classList.contains('menu-abierto')) {
+            setMenu(false);
+            boton.focus();
+        }
+    });
+
+    // Si se agranda la pantalla (o se rota el celular) hasta modo escritorio, se resetea
+    const mq = window.matchMedia('(max-width: 768px)');
+    const alCambiar = e => { if (!e.matches) setMenu(false); };
+    if (mq.addEventListener) mq.addEventListener('change', alCambiar);
+    else mq.addListener(alCambiar);
+})();
+
+
+// ══════════════════════════════════════════════
+//  TUTORIAL GUIADO — recorrido paso a paso
+//  Oscurece y desenfoca todo menos lo que se explica.
+//  Se muestra solo la primera vez, se puede omitir y
+//  se vuelve a abrir con el botón "?" de la barra.
+// ══════════════════════════════════════════════
+(function () {
+    const KEY_LOGIN = 'krono-tuto-prece-login';
+    const KEY_PANEL = 'krono-tuto-prece-panel';
+
+    const $  = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const esMovil = () => window.matchMedia('(max-width: 768px)').matches;
+    const sinMov  = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const soportaPath = !!(window.CSS && CSS.supports && CSS.supports('clip-path', 'path("M0 0H1V1Z")'));
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+
+    function leer(k)    { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function guardar(k) { try { localStorage.setItem(k, '1'); } catch (e) {} }
+    function esperar(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function visible(el) {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+    }
+    function pantallaVisible(id) {
+        const el = document.getElementById(id);
+        return !!el && getComputedStyle(el).display !== 'none';
+    }
+    const panelActivo = () => {
+        const t = $('#panel-screen .tab-btn.tab-activa');
+        return t ? t.id.replace('tab-', '') : null;
+    };
+    const extrasAbiertas = () => { const e = $('#tabs-extra'); return !!e && e.classList.contains('mostrar'); };
+    const irATab = n => { if (n && panelActivo() !== n) cambiarPestania(n); };
+    const fijarExtras = abrir => { if (extrasAbiertas() !== abrir) toggleTabsExtra(); };
+
+    // ── PASOS ─────────────────────────────────
+    // objetivo: selector | elemento | array | función que devuelve elementos (se calcula la caja que los une)
+    // tab / extras: pestaña a mostrar y si el "+" debe estar desplegado
+    // maxAlto: recorta la zona resaltada cuando el contenido es muy largo · alTope: sube al inicio (elementos de la barra)
+    function pasosLogin() {
+        return [
+            { titulo: '¡Bienvenido a Krono!',
+              texto: 'Este es el acceso de Preceptoría. Te muestro en un minuto cómo ingresar y dónde queda cada cosa. Podés omitir el recorrido cuando quieras.' },
+            { titulo: 'Tus datos',
+              texto: 'Completá nombre y apellido, correo institucional y DNI. Tienen que coincidir con los datos cargados en Krono.',
+              objetivo: () => $$('.login-card .input-icon-wrap') },
+            { titulo: 'Ingresar',
+              texto: 'Con los tres datos listos, tocá «Ingresar» o apretá Enter. Si algo no coincide, aparece un aviso en rojo arriba del botón.',
+              objetivo: '.login-card .btn-login' },
+            { titulo: 'Tu ayuda, siempre a mano',
+              texto: 'Este botón vuelve a abrir el tutorial cuando quieras. La primera vez que ingreses te muestro el panel completo.',
+              objetivo: '.tuto-ayuda', alTope: true }
+        ];
+    }
+
+    function pasosPanel() {
+        const nombre = (sessionStorage.getItem('prece_nombre') || '').trim().split(/\s+/)[0];
+        return [
+            { titulo: nombre ? '¡Hola, ' + nombre + '!' : '¡Hola!',
+              texto: 'Este es tu Panel de Gestión. Te muestro qué hace cada parte mientras el resto queda de fondo. Avanzá con «Siguiente» o con las flechas del teclado.' },
+            { titulo: 'Menú principal',
+              texto: 'Desde acá pasás de un panel a otro: Estudiantes, Preceptoría (donde estás), Directivos y Profesores.',
+              textoMovil: 'Tocá las tres rayitas para abrir el menú y pasar de un panel a otro: Estudiantes, Preceptoría, Directivos y Profesores.',
+              objetivo: () => esMovil() ? $('#menu-toggle') : $('#nav-principal'), alTope: true },
+            { titulo: 'Modo claro u oscuro',
+              texto: 'Cambiá la apariencia a gusto. El ícono muestra el modo al que vas a pasar y Krono recuerda tu elección.',
+              objetivo: '#modo-toggle-btn', alTope: true },
+            { titulo: 'Cerrar sesión',
+              texto: 'Cuando termines, cerrá sesión, sobre todo si la compu la usa más gente.',
+              objetivo: '.btn-logout' },
+            { titulo: 'Las pestañas',
+              texto: 'Cada pestaña es una herramienta. Las cuatro principales están siempre a la vista: Avisos, Comunicación, Faltas y Descargar Excel.',
+              objetivo: ['#tab-avisos', '#tab-anuncios', '#tab-faltas', '#tab-excel', '#tab-toggle-extra'] },
+
+            { titulo: 'Avisos de llegada tarde', tab: 'avisos',
+              texto: 'Acá registrás que un curso va a llegar tarde, por ejemplo por un paro de transporte. Primero elegí el curso: el aviso les llega a todos sus alumnos.',
+              objetivo: () => $('#selector-aviso-curso').closest('.aviso-campo') },
+            { titulo: 'Fecha, hora y motivo', tab: 'avisos',
+              texto: 'Indicá el día, la hora de llegada (con las flechitas ▲▼) y el motivo. Al final, «Guardar aviso».',
+              objetivo: () => $$('#panel-avisos .aviso-form-card .aviso-campo').slice(1).concat($('#panel-avisos .aviso-form-card .btn-login')) },
+            { titulo: 'Avisos registrados', tab: 'avisos', maxAlto: 260,
+              texto: 'Consultá lo que ya cargaste: elegís curso, después el mes y ves los avisos de cada día. También podés eliminarlos.',
+              objetivo: '#panel-avisos .aviso-lista-wrap' },
+
+            { titulo: 'Anuncios para un alumno', tab: 'anuncios',
+              texto: 'Mandale un mensaje privado a un alumno: elegí el curso, después el alumno y escribí el anuncio.',
+              objetivo: '#panel-anuncios .aviso-form-card' },
+            { titulo: 'Anuncios enviados', tab: 'anuncios', maxAlto: 260,
+              texto: 'Elegí un curso y mirá lo que ya mandaste. Si te equivocaste, podés eliminar el anuncio.',
+              objetivo: () => $('#selector-ver-anuncios').closest('.aviso-lista-wrap') },
+            { titulo: 'Documentación', tab: 'anuncios', maxAlto: 260,
+              texto: 'Acá aparecen los archivos que suben los alumnos desde su panel. Elegí un curso y abrí el detalle de cada uno; desde ahí también podés eliminarlos.',
+              objetivo: () => $('#docs-contenedor').closest('.aviso-lista-wrap') },
+
+            { titulo: 'Feriados y excepciones', tab: 'faltas',
+              texto: 'Los días cargados acá no cuentan como falta. Los feriados nacionales fijos ya vienen listos; sumá paros o suspensiones desde «Mostrar».',
+              objetivo: '.feriados-wrap' },
+            { titulo: 'Faltas por curso', tab: 'faltas',
+              texto: 'Elegí un curso para ver las ausencias de cada alumno y cuántas tienen motivo. Con el buscador y el orden encontrás rápido a quien necesitás.',
+              objetivo: () => $$('#panel-faltas .filtros-row') },
+
+            { titulo: 'Descargar Excel', tab: 'excel',
+              texto: 'Elegí una fecha y bajá la planilla de asistencia del curso que necesites. Se abre directo en Excel.',
+              objetivo: '#panel-excel .excel-panel-wrap' },
+
+            { titulo: 'Más opciones con el +', tab: 'excel', extras: true,
+              texto: 'Con el «+» se despliegan cuatro herramientas más: Alumnos, Motivos, Evidencias e Ingresos.',
+              objetivo: ['#tab-toggle-extra', '#tabs-extra'] },
+            { titulo: 'Alumnos', tab: 'alumnos', extras: true,
+              texto: 'Elegí un año y aparece la lista de alumnos del curso con su mail.',
+              objetivo: '#panel-alumnos .selector-cursos-grid' },
+            { titulo: 'Motivos', tab: 'motivos', extras: true, maxAlto: 200,
+              texto: 'Los motivos que cargaron los alumnos. Elegí un curso y desplegá a cada uno para ver el detalle.',
+              objetivo: '#motivos-contenedor' },
+            { titulo: 'Evidencias', tab: 'evidencias', extras: true, maxAlto: 200,
+              texto: 'Las fotos de clase de cada curso. Tocá una para verla en grande, con su descripción y fecha.',
+              objetivo: '#evidencias-prece-contenedor' },
+            { titulo: 'Ingresos', tab: 'ingresos', extras: true,
+              texto: 'Elegí curso y fecha para ver quién ingresó (con su código KRONO) y a qué hora. Después de las 7:40 figura como tarde.',
+              objetivo: '#panel-ingresos .ingresos-filtros' },
+
+            { titulo: '¡Eso es todo!',
+              texto: 'Ya conocés todo el panel. Cuando quieras repasarlo, tocá este botón.',
+              objetivo: '.tuto-ayuda', alTope: true }
+        ];
+    }
+
+    // ── ESTADO ────────────────────────────────
+    let activo = false, tipo = null, pasos = [], idx = 0, ticket = 0;
+    let raf = 0, animando = false, cambiando = false, pendiente = false;
+    let actual = { x: 0, y: 0, w: 0, h: 0 };
+    let bloqueo, velo, anillo, card, ro, previoFoco, estadoInicial;
+    let elContador, elBarra, elTitulo, elTexto, btnAnt, btnSig, btnOmitir;
+
+    // ── GEOMETRÍA ─────────────────────────────
+    const anchoVista = () => document.documentElement.clientWidth;
+    const centro = () => ({ x: anchoVista() / 2, y: window.innerHeight / 2, w: 0, h: 0 });
+
+    function elementosDe(p) {
+        if (!p || !p.objetivo) return [];
+        let o = typeof p.objetivo === 'function' ? p.objetivo() : p.objetivo;
+        if (!Array.isArray(o)) o = [o];
+        return o.map(x => typeof x === 'string' ? $(x) : x).filter(visible);
+    }
+
+    // Caja que une todos los elementos del paso (sin recortar a la pantalla)
+    function rectCrudo(p) {
+        const els = elementosDe(p);
+        if (!els.length) return null;
+        let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+        els.forEach(el => {
+            const r = el.getBoundingClientRect();
+            x1 = Math.min(x1, r.left);  y1 = Math.min(y1, r.top);
+            x2 = Math.max(x2, r.right); y2 = Math.max(y2, r.bottom);
+        });
+        const pad = 8;
+        const c = { x: x1 - pad, y: y1 - pad, w: (x2 - x1) + pad * 2, h: (y2 - y1) + pad * 2 };
+        if (p.maxAlto) c.h = Math.min(c.h, p.maxAlto + pad * 2);
+        return c;
+    }
+
+    // La misma caja, recortada a lo que se ve en pantalla
+    function rectVisible(p) {
+        const c = rectCrudo(p);
+        if (!c) return null;
+        const m = 8, W = anchoVista(), H = window.innerHeight;
+        const x1 = Math.max(c.x, m), y1 = Math.max(c.y, m);
+        const x2 = Math.min(c.x + c.w, W - m), y2 = Math.min(c.y + c.h, H - m);
+        return (x2 > x1 && y2 > y1) ? { x: x1, y: y1, w: x2 - x1, h: y2 - y1 } : c;
+    }
+    const objetivoActual = () => rectVisible(pasos[idx]) || centro();
+
+    function pintar(r) {
+        actual = r;
+        const rad = Math.max(0, Math.min(16, r.w / 2, r.h / 2));
+        anillo.style.left = r.x + 'px';
+        anillo.style.top = r.y + 'px';
+        anillo.style.width = r.w + 'px';
+        anillo.style.height = r.h + 'px';
+        anillo.style.borderRadius = rad + 'px';
+        if (soportaPath) {
+            const W = anchoVista(), H = window.innerHeight;
+            const { x, y, w, h } = r;
+            velo.style.clipPath =
+                'path(evenodd, "M0 0H' + W + 'V' + H + 'H0Z ' +
+                'M' + (x + rad) + ' ' + y + 'H' + (x + w - rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + w) + ' ' + (y + rad) +
+                'V' + (y + h - rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + w - rad) + ' ' + (y + h) +
+                'H' + (x + rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + x + ' ' + (y + h - rad) +
+                'V' + (y + rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + rad) + ' ' + y + 'Z")';
+        }
+    }
+
+    // Anima la zona resaltada hacia el paso actual (siguiendo al elemento si se mueve)
+    function animar(dur) {
+        cancelAnimationFrame(raf);
+        const desde = Object.assign({}, actual);
+        const t0 = performance.now();
+        animando = true;
+        const cuadro = ahora => {
+            const t = dur ? Math.min(1, (ahora - t0) / dur) : 1;
+            const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            const h = objetivoActual();
+            pintar({
+                x: desde.x + (h.x - desde.x) * e, y: desde.y + (h.y - desde.y) * e,
+                w: desde.w + (h.w - desde.w) * e, h: desde.h + (h.h - desde.h) * e
+            });
+            if (t < 1) raf = requestAnimationFrame(cuadro);
+            else { animando = false; pintar(objetivoActual()); }
+        };
+        raf = requestAnimationFrame(cuadro);
+    }
+
+    function esperarScroll(max) {
+        return new Promise(res => {
+            let ultimo = window.scrollY, quieto = 0;
+            const t0 = performance.now();
+            (function f() {
+                const y = window.scrollY;
+                quieto = (y === ultimo) ? quieto + 1 : 0;
+                ultimo = y;
+                if (quieto >= 4 || performance.now() - t0 > (max || 900)) res();
+                else requestAnimationFrame(f);
+            })();
+        });
+    }
+
+    // Acomoda el scroll para que se vean a la vez lo resaltado y la tarjeta
+    async function asegurarVisible(p) {
+        const beh = sinMov ? 'auto' : 'smooth';
+        if (p.alTope) {
+            if (window.scrollY > 4) { window.scrollTo({ top: 0, behavior: beh }); await esperarScroll(); }
+            return;
+        }
+        const c = rectCrudo(p);
+        if (!c) return;
+        const H = window.innerHeight, m = 12, gap = 16, ch = card.offsetHeight;
+        const hayLugar = (H - (c.y + c.h) - gap - m >= ch) || (c.y - gap - m >= ch);
+        if (c.y >= m && c.y + c.h <= H - m && hayLugar) return;
+
+        const sb = $('.sidebar');
+        const calc = topMin => {
+            const libre = H - topMin - m, bloque = c.h + gap + ch;
+            const topDeseado = bloque <= libre ? topMin + (libre - bloque) / 2 : topMin;
+            return c.y - topDeseado;
+        };
+        let delta = calc(m);
+        // Si se sube, reaparece la barra fija: dejarle su lugar
+        if (delta < -6 || window.scrollY + delta <= 10) delta = calc((sb ? sb.offsetHeight : 0) + m);
+        if (Math.abs(delta) < 4) return;
+        window.scrollBy({ top: delta, behavior: beh });
+        await esperarScroll();
+    }
+
+    function ubicarCard() {
+        const W = anchoVista(), H = window.innerHeight, m = 12, gap = 16;
+        const cw = card.offsetWidth, ch = card.offsetHeight;
+        const r = rectVisible(pasos[idx]);
+        let left, top;
+        if (!r) {
+            left = (W - cw) / 2; top = (H - ch) / 2;
+        } else {
+            const x = clamp(r.x + r.w / 2 - cw / 2, m, W - cw - m);
+            if (H - (r.y + r.h) - gap - m >= ch)      { left = x; top = r.y + r.h + gap; }
+            else if (r.y - gap - m >= ch)              { left = x; top = r.y - gap - ch; }
+            else if (W - (r.x + r.w) - gap - m >= cw)  { left = r.x + r.w + gap; top = clamp(r.y, m, H - ch - m); }
+            else if (r.x - gap - m >= cw)              { left = r.x - gap - cw;  top = clamp(r.y, m, H - ch - m); }
+            else                                       { left = x; top = H - ch - m; }
+        }
+        card.style.left = Math.round(left) + 'px';
+        card.style.top  = Math.round(top) + 'px';
+    }
+
+    function pedirReubicar() {
+        if (!activo || pendiente) return;
+        pendiente = true;
+        requestAnimationFrame(() => {
+            pendiente = false;
+            if (!activo || animando || cambiando) return;
+            pintar(objetivoActual());
+            ubicarCard();
+        });
+    }
+
+    // ── PASOS: MOSTRAR / NAVEGAR ──────────────
+    function rellenar(p) {
+        const titulo = typeof p.titulo === 'function' ? p.titulo() : p.titulo;
+        const ultimo = idx === pasos.length - 1;
+        elContador.textContent = 'Paso ' + (idx + 1) + ' de ' + pasos.length;
+        elBarra.style.width = ((idx + 1) / pasos.length * 100) + '%';
+        elTitulo.textContent = titulo;
+        elTexto.textContent = (esMovil() && p.textoMovil) ? p.textoMovil : p.texto;
+        btnAnt.disabled = idx === 0;
+        btnSig.textContent = ultimo ? '¡Listo!' : 'Siguiente →';
+        btnOmitir.hidden = ultimo;
+    }
+
+    async function mostrarPaso(i) {
+        const mio = ++ticket;
+        idx = i;
+        cambiando = true;
+        const p = pasos[i];
+        card.classList.add('tuto-cambiando');
+
+        if (tipo === 'panel') { fijarExtras(!!p.extras); irATab(p.tab); }
+        await esperar(sinMov ? 0 : 120);
+        if (mio !== ticket) return;
+
+        rellenar(p);
+        await asegurarVisible(p);
+        if (mio !== ticket) return;
+
+        anillo.classList.toggle('tuto-anillo-sin', !rectVisible(p));
+        ubicarCard();
+        cambiando = false;
+        animar(sinMov ? 0 : 480);
+        await esperar(sinMov ? 0 : 200);
+        if (mio !== ticket) return;
+
+        card.classList.remove('tuto-cambiando');
+        btnSig.focus({ preventScroll: true });
+    }
+
+    const siguiente = () => { if (activo) (idx >= pasos.length - 1 ? cerrar('fin') : mostrarPaso(idx + 1)); };
+    const anterior  = () => { if (activo && idx > 0) mostrarPaso(idx - 1); };
+
+    function onKey(e) {
+        if (!activo) return;
+        if (e.key === 'Escape')          { e.preventDefault(); e.stopPropagation(); cerrar('omitir'); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); siguiente(); }
+        else if (e.key === 'ArrowLeft')  { e.preventDefault(); anterior(); }
+        else if (e.key === 'Tab') {
+            const f = Array.from(card.querySelectorAll('button:not([disabled]):not([hidden])'));
+            if (!f.length) return;
+            const i = f.indexOf(document.activeElement);
+            if (e.shiftKey && i <= 0)            { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+            else if (i === -1)                   { e.preventDefault(); f[0].focus(); }
+        }
+    }
+
+    // ── INICIO / CIERRE ───────────────────────
+    function crearDOM() {
+        bloqueo = document.createElement('div'); bloqueo.className = 'tuto-bloqueo';
+        velo    = document.createElement('div'); velo.className    = 'tuto-velo';
+        anillo  = document.createElement('div'); anillo.className  = 'tuto-anillo';
+        card    = document.createElement('div'); card.className    = 'tuto-card tuto-cambiando';
+        card.setAttribute('role', 'dialog');
+        card.setAttribute('aria-modal', 'true');
+        card.setAttribute('aria-labelledby', 'tuto-titulo');
+        card.setAttribute('aria-describedby', 'tuto-texto');
+        card.tabIndex = -1;
+        card.innerHTML =
+            '<div class="tuto-card-top">' +
+                '<span class="tuto-contador" id="tuto-contador"></span>' +
+                '<button type="button" class="tuto-omitir" id="tuto-omitir">Omitir ✕</button>' +
+            '</div>' +
+            '<div class="tuto-progreso"><span id="tuto-barra"></span></div>' +
+            '<p class="tuto-titulo" id="tuto-titulo"></p>' +
+            '<p class="tuto-texto" id="tuto-texto" aria-live="polite"></p>' +
+            '<div class="tuto-acciones">' +
+                '<button type="button" class="tuto-btn-sec" id="tuto-ant">← Anterior</button>' +
+                '<button type="button" class="tuto-btn-pri" id="tuto-sig">Siguiente →</button>' +
+            '</div>';
+        [bloqueo, velo, anillo, card].forEach(e => document.body.appendChild(e));
+
+        elContador = card.querySelector('#tuto-contador');
+        elBarra    = card.querySelector('#tuto-barra');
+        elTitulo   = card.querySelector('#tuto-titulo');
+        elTexto    = card.querySelector('#tuto-texto');
+        btnAnt     = card.querySelector('#tuto-ant');
+        btnSig     = card.querySelector('#tuto-sig');
+        btnOmitir  = card.querySelector('#tuto-omitir');
+        btnAnt.addEventListener('click', anterior);
+        btnSig.addEventListener('click', siguiente);
+        btnOmitir.addEventListener('click', () => cerrar('omitir'));
+    }
+
+    function iniciar(t) {
+        if (activo) return;
+        if (t === 'panel' && !pantallaVisible('panel-screen')) return;
+        if (t === 'login' && !pantallaVisible('login-screen')) return;
+
+        tipo = t;
+        pasos = t === 'panel' ? pasosPanel() : pasosLogin();
+        idx = 0;
+        activo = true;
+        previoFoco = document.activeElement;
+        estadoInicial = t === 'panel' ? { tab: panelActivo(), extras: extrasAbiertas() } : null;
+        const sb = $('.sidebar'); if (sb) sb.classList.remove('menu-abierto');
+
+        crearDOM();
+        pintar(centro());
+        requestAnimationFrame(() => [velo, anillo].forEach(e => e.classList.add('tuto-in')));
+
+        document.addEventListener('keydown', onKey, true);
+        window.addEventListener('scroll', pedirReubicar, { passive: true });
+        window.addEventListener('resize', pedirReubicar);
+        if (typeof ResizeObserver !== 'undefined') {
+            ro = new ResizeObserver(pedirReubicar);
+            ro.observe(document.body);
+        }
+        mostrarPaso(0);
+    }
+
+    function cerrar(motivo) {
+        if (!activo) return;
+        activo = false; animando = false; cambiando = false; ticket++;
+        cancelAnimationFrame(raf);
+
+        if (tipo === 'panel') {
+            guardar(KEY_PANEL);
+            if (estadoInicial) { fijarExtras(estadoInicial.extras); irATab(estadoInicial.tab); }
+        } else {
+            guardar(KEY_LOGIN);
+            if (motivo === 'omitir') guardar(KEY_PANEL);   // quien omite no quiere más tutoriales solos
+        }
+
+        document.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('scroll', pedirReubicar);
+        window.removeEventListener('resize', pedirReubicar);
+        if (ro) { ro.disconnect(); ro = null; }
+
+        const viejos = [bloqueo, velo, anillo, card];
+        [velo, anillo].forEach(e => e.classList.remove('tuto-in'));
+        card.classList.add('tuto-cambiando');
+        bloqueo.style.pointerEvents = 'none';
+        setTimeout(() => viejos.forEach(e => e.remove()), 350);
+
+        if (previoFoco && document.contains(previoFoco)) {
+            try { previoFoco.focus({ preventScroll: true }); } catch (e) {}
+        }
+    }
+
+    // ── BOTÓN "?" EN LA BARRA + ARRANQUE AUTOMÁTICO ──
+    function crearBotonAyuda() {
+        if ($('#tuto-ayuda-btn')) return;
+        const b = document.createElement('button');
+        b.id = 'tuto-ayuda-btn';
+        b.type = 'button';
+        b.className = 'tuto-ayuda';
+        b.title = 'Ver tutorial';
+        b.setAttribute('aria-label', 'Ver tutorial guiado');
+        b.textContent = '?';
+        b.addEventListener('click', () => iniciar(pantallaVisible('panel-screen') ? 'panel' : 'login'));
+        const modo = $('#modo-toggle-btn'), sidebar = $('.sidebar');
+        if (modo && modo.parentNode) modo.parentNode.insertBefore(b, modo.nextSibling);
+        else if (sidebar) sidebar.appendChild(b);
+    }
+
+    function arrancarSiCorresponde() {
+        if (pantallaVisible('panel-screen')) { if (!leer(KEY_PANEL)) iniciar('panel'); }
+        else if (pantallaVisible('login-screen') && !leer(KEY_LOGIN)) iniciar('login');
+    }
+
+    window.kronoTutorial = {
+        iniciar: iniciar,
+        // Se llama tras un login correcto: muestra el panel la primera vez
+        alIngresar: function () { if (!leer(KEY_PANEL)) setTimeout(() => iniciar('panel'), 700); }
+    };
+
+    function init() {
+        crearBotonAyuda();
+        if (document.readyState === 'complete') setTimeout(arrancarSiCorresponde, 500);
+        else window.addEventListener('load', () => setTimeout(arrancarSiCorresponde, 500));
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+})();

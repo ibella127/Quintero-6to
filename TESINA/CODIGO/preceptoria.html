@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Preceptoría</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="prece-style.css?v=3">
+    <link rel="stylesheet" href="prece-style.css?v=4">
     <style>
         /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
            cruzan según el modo — evita que se vean las dos pisadas juntas */
@@ -18,24 +18,24 @@
         body.dark-mode .nav-icon-profes-img.icon-claro { opacity: 0; }
         body.dark-mode .nav-icon-profes-img.icon-oscuro { opacity: 1; }
     </style>
-    //<script>
+    <script>
         // Iguala el tamaño del ícono de Profesores (dos <img> apiladas) al de
         // los demás íconos del nav, midiendo el real en vez de adivinar un px.
-        //function igualarTamanoIconoProfes() {
-        //    var wrap = document.querySelector('.nav-icon-profes-wrap');
-          //  var otro = document.querySelector('.nav-item img:not(.nav-icon-profes-img)');
-            //if (!wrap || !otro) return;
-            //var w = otro.getBoundingClientRect().width;
-            //var h = otro.getBoundingClientRect().height;
-            //if (w && h) {
-              //  wrap.style.width  = w + 'px';
-                //wrap.style.height = h + 'px';
-            //}
-        //}
-        //document.addEventListener('DOMContentLoaded', igualarTamanoIconoProfes);
-        //window.addEventListener('load', igualarTamanoIconoProfes);
-        //window.addEventListener('resize', igualarTamanoIconoProfes);
-    //</script>
+        function igualarTamanoIconoProfes() {
+            var wrap = document.querySelector('.nav-icon-profes-wrap');
+            var otro = document.querySelector('.nav-item img:not(.nav-icon-profes-img)');
+            if (!wrap || !otro) return;
+            var w = otro.getBoundingClientRect().width;
+            var h = otro.getBoundingClientRect().height;
+            if (w && h) {
+                wrap.style.width  = w + 'px';
+                wrap.style.height = h + 'px';
+            }
+        }
+        document.addEventListener('DOMContentLoaded', igualarTamanoIconoProfes);
+        window.addEventListener('load', igualarTamanoIconoProfes);
+        window.addEventListener('resize', igualarTamanoIconoProfes);
+    </script>
 </head>
 <body>
     <div class="bg-blur"></div>
@@ -47,7 +47,11 @@
                     <img src="logo-lateral.png" alt="Logo KRONO" class="side-img">
                 </a>
             </div>
-            <nav class="nav-icons">
+            <!-- Botón hamburguesa: solo se muestra en pantallas chicas (ver CSS) -->
+            <button class="menu-toggle" id="menu-toggle" type="button" aria-label="Abrir menú" aria-expanded="false" aria-controls="nav-principal">
+                <span></span><span></span><span></span>
+            </button>
+            <nav class="nav-icons" id="nav-principal" aria-label="Menú principal">
                 <a href="alumno.html" class="nav-item">
                     <img src="icono-alumno.png" alt="Estudiantes">
                     <span class="nav-label">Estudiantes</span>
@@ -395,6 +399,6 @@
         </main>
     </div>
 
-    <script src="prece-script.js?v=3"></script>
+    <script src="prece-script.js?v=4"></script>
 </body>
 </html>

@@ -2413,3 +2413,296 @@ body.dark-mode .anuncio-prece-item {
 body.dark-mode .anuncio-prece-alumno { color: var(--sky-mid) !important; }
 body.dark-mode .anuncio-prece-fecha  { color: #5a7a9a !important; }
 body.dark-mode .anuncio-prece-msg    { color: #a8c8e0 !important; }
+
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — menú hamburguesa (solo pantallas chicas)
+   Va al final del archivo para ganarle a las reglas anteriores
+   sin tener que usar !important en todo.
+══════════════════════════════════════════════════════════════ */
+
+/* En escritorio el botón hamburguesa no existe */
+.menu-toggle { display: none; }
+
+@media (max-width: 768px) {
+
+    /* Barra superior: logo a la izquierda, modo + hamburguesa a la derecha */
+    .sidebar { padding: 0.6rem 1rem; gap: 0.5rem; }
+    .side-img { width: 70px; }
+    .sidebar .modo-btn { width: 52px; height: 52px; order: 2; }
+
+    /* Botón hamburguesa */
+    .menu-toggle {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        cursor: pointer;
+        flex-shrink: 0;
+        order: 3;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .menu-toggle:focus-visible { outline: 2px solid var(--sky-strong); outline-offset: 2px; }
+    .menu-toggle span {
+        display: block;
+        width: 24px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--sky-deep);
+        transition: transform 0.3s ease, opacity 0.2s ease, background-color 0.35s ease !important;
+    }
+    /* Se transforma en X al abrir */
+    .sidebar.menu-abierto .menu-toggle span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+    .sidebar.menu-abierto .menu-toggle span:nth-child(2) { opacity: 0; }
+    .sidebar.menu-abierto .menu-toggle span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
+    /* Los 4 botones pasan a ser un panel desplegable debajo de la barra.
+       Cerrado = invisible pero con layout (así el JS del ícono de Profesores
+       puede seguir midiendo el tamaño real de los íconos). */
+    .nav-icons {
+        left: 0;
+        right: 0;
+        top: 100%;
+        transform: translateY(-8px);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.2rem;
+        padding: 0.6rem 1rem 1rem;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+        background: rgba(250, 247, 241, 0.97);
+        border-bottom: 1px solid rgba(75, 163, 217, 0.25);
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 14px 28px rgba(26, 111, 168, 0.18);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease !important;
+    }
+    .sidebar.menu-abierto .nav-icons {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    /* Mientras el menú está abierto, la barra no se esconde al scrollear */
+    .sidebar.menu-abierto.header-oculto {
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Cada opción: ícono a la izquierda, texto a la derecha, fácil de tocar */
+    .nav-item {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 1rem;
+        padding: 0.55rem 0.8rem;
+        border-radius: 14px;
+        opacity: 1;
+    }
+    .nav-item:hover,
+    .nav-item.active { transform: none; background: rgba(75, 163, 217, 0.12); }
+    .nav-icons .nav-item img { width: 40px; height: 40px; flex-shrink: 0; }
+    .nav-icons .nav-icon-profes-wrap { width: 40px !important; height: 40px !important; flex-shrink: 0; }
+    .nav-icons .nav-icon-profes-img { margin: 0; }
+    .nav-label { font-size: 0.85rem; }
+
+    /* Modo oscuro del panel y del botón */
+    body.dark-mode .nav-icons {
+        background: rgba(8, 20, 38, 0.97);
+        border-bottom-color: rgba(75, 163, 217, 0.22);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
+    }
+    body.dark-mode .menu-toggle span { background: var(--sky-mid); }
+    body.dark-mode .nav-item:hover,
+    body.dark-mode .nav-item.active { background: rgba(75, 163, 217, 0.16); }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+    .nav-icons,
+    .menu-toggle span { transition: none !important; }
+}
+
+@media (max-width: 400px) {
+    .sidebar { padding: 0.5rem 0.75rem; }
+}
+
+/* ── Ajustes generales de responsive (preceptoría) ── */
+@media (max-width: 768px) {
+    .main-content { padding: 0 1.25rem; }
+    .flex-center { padding: 2rem 0 3rem; }
+}
+@media (max-width: 640px) {
+    .krono-header-main { max-width: 180px; margin-bottom: 1.2rem; }
+    .selector-cursos-mini { grid-template-columns: repeat(3, 1fr); }
+    .tab-btn { padding: 10px 12px 12px; font-size: 0.9rem; }
+    .filtros-row { gap: 0.8rem; }
+}
+@media (max-width: 400px) {
+    .main-content { padding: 0 1rem; }
+    .section-title-prece { font-size: 1.7rem; }
+}
+
+
+/* ══════════════════════════════════════════════════════════════
+   TUTORIAL GUIADO
+   Velo desenfocado con "ventana" sobre lo que se explica +
+   tarjeta de vidrio. Los !important en transition son necesarios
+   por la regla global de modo oscuro (* { transition ... !important }).
+══════════════════════════════════════════════════════════════ */
+
+/* Botón "?" en la barra, al lado del modo claro/oscuro */
+.tuto-ayuda {
+    width: 38px; height: 38px; flex-shrink: 0; margin-left: 0.6rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; cursor: pointer;
+    background: rgba(255,255,255,0.78);
+    border: 1.5px solid rgba(75,163,217,0.4);
+    color: var(--sky-deep);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.45rem; font-weight: 600; line-height: 1;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: background-color 0.25s ease, color 0.25s ease,
+                border-color 0.25s ease, transform 0.2s ease !important;
+}
+.tuto-ayuda:hover { background: var(--sky-deep); border-color: var(--sky-deep); color: #fff; transform: translateY(-2px); }
+.tuto-ayuda:focus-visible { outline: 2px solid var(--sky-strong); outline-offset: 2px; }
+body.dark-mode .tuto-ayuda {
+    background: rgba(8,20,38,0.85); border-color: rgba(75,163,217,0.35); color: var(--sky-mid);
+}
+body.dark-mode .tuto-ayuda:hover { background: var(--sky-deep); border-color: var(--sky-deep); color: #fff; }
+
+/* Capas: bloqueo (evita clics) < velo (desenfoque) < anillo (oscurece + borde) < tarjeta */
+.tuto-bloqueo { position: fixed; inset: 0; z-index: 10500; background: transparent; }
+
+.tuto-velo {
+    position: fixed; inset: 0; z-index: 10501; pointer-events: none;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity 0.35s ease !important;
+}
+.tuto-anillo {
+    --tuto-dim: rgba(14, 42, 66, 0.55);
+    position: fixed; z-index: 10502; pointer-events: none;
+    border: 2px solid rgba(168,212,245,0.95);
+    box-shadow: 0 0 0 4px rgba(75,163,217,0.25),
+                0 0 28px rgba(75,163,217,0.55),
+                0 0 0 9999px var(--tuto-dim);
+    opacity: 0; transition: opacity 0.35s ease !important;
+}
+body.dark-mode .tuto-anillo { --tuto-dim: rgba(2, 8, 16, 0.68); border-color: rgba(75,163,217,0.9); }
+.tuto-velo.tuto-in, .tuto-anillo.tuto-in { opacity: 1; }
+
+/* Latido suave alrededor de lo resaltado */
+.tuto-anillo::after {
+    content: ''; position: absolute; inset: -7px; border-radius: inherit;
+    border: 2px solid var(--sky-strong); opacity: 0;
+    animation: tuto-latido 2s ease-out infinite;
+}
+@keyframes tuto-latido {
+    0%        { opacity: 0.7; transform: scale(0.985); }
+    70%, 100% { opacity: 0;   transform: scale(1.04); }
+}
+/* Pasos sin elemento (bienvenida): solo se oscurece todo */
+.tuto-anillo-sin { border-color: transparent !important; box-shadow: 0 0 0 9999px var(--tuto-dim); }
+.tuto-anillo-sin::after { display: none; }
+
+/* Tarjeta */
+.tuto-card {
+    position: fixed; z-index: 10503;
+    width: 360px; max-width: calc(100vw - 24px);
+    padding: 1.2rem 1.4rem 1.3rem;
+    text-align: left; outline: none;
+    background: rgba(255,255,255,0.94);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(75,163,217,0.28);
+    border-radius: 22px;
+    box-shadow: 0 24px 60px rgba(10,20,40,0.35), 0 4px 16px rgba(26,111,168,0.18);
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.28s ease, transform 0.28s ease !important;
+}
+.tuto-card.tuto-cambiando { opacity: 0; transform: translateY(8px); pointer-events: none; }
+body.dark-mode .tuto-card {
+    background: rgba(8,20,38,0.94); border-color: rgba(75,163,217,0.25);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 4px 16px rgba(26,111,168,0.25);
+}
+
+.tuto-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
+.tuto-contador {
+    font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--sky-deep);
+}
+body.dark-mode .tuto-contador { color: var(--sky-mid); }
+.tuto-omitir {
+    background: transparent; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--ink-muted);
+    padding: 4px 8px; margin-right: -8px; border-radius: 8px;
+    transition: color 0.2s ease !important;
+}
+.tuto-omitir:hover { color: var(--sky-deep); }
+body.dark-mode .tuto-omitir:hover { color: var(--sky-mid); }
+.tuto-omitir[hidden] { display: none; }
+
+.tuto-progreso {
+    height: 3px; border-radius: 3px; overflow: hidden;
+    background: rgba(75,163,217,0.18); margin-bottom: 1rem;
+}
+.tuto-progreso span {
+    display: block; height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--sky-strong), var(--sky-deep));
+    transition: width 0.4s ease !important;
+}
+.tuto-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.65rem; font-weight: 600; line-height: 1.15;
+    letter-spacing: 0.01em; color: var(--ink); margin-bottom: 0.5rem;
+}
+.tuto-texto {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; line-height: 1.55; color: var(--ink-muted); margin-bottom: 1.2rem;
+}
+.tuto-acciones { display: flex; gap: 10px; justify-content: flex-end; }
+
+.tuto-btn-pri, .tuto-btn-sec {
+    font-family: 'DM Sans', sans-serif; cursor: pointer; border-radius: 12px;
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+                color 0.25s ease, transform 0.2s ease !important;
+}
+.tuto-btn-pri {
+    background: var(--sky-deep); color: #fff; border: none;
+    padding: 10px 20px; font-size: 0.95rem; font-weight: 500;
+}
+.tuto-btn-pri:hover { background: var(--sky-strong); transform: translateY(-2px); }
+.tuto-btn-sec {
+    background: transparent; border: 1.5px solid rgba(75,163,217,0.4);
+    padding: 9px 16px; font-size: 0.9rem; color: var(--ink-muted);
+}
+.tuto-btn-sec:hover:not(:disabled) { border-color: var(--sky-strong); color: var(--sky-deep); }
+.tuto-btn-sec:disabled { opacity: 0.35; cursor: default; }
+body.dark-mode .tuto-btn-sec { border-color: rgba(75,163,217,0.3); color: #7aa8c8; }
+body.dark-mode .tuto-btn-sec:hover:not(:disabled) { color: var(--sky-mid); }
+.tuto-btn-pri:focus-visible, .tuto-btn-sec:focus-visible, .tuto-omitir:focus-visible {
+    outline: 2px solid var(--sky-strong); outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .sidebar .tuto-ayuda { order: 2; margin-left: 0.3rem; width: 40px; height: 40px; }
+}
+@media (max-width: 640px) {
+    .tuto-card { padding: 1rem 1.1rem 1.1rem; border-radius: 18px; }
+    .tuto-titulo { font-size: 1.45rem; }
+    .tuto-texto { font-size: 0.9rem; margin-bottom: 1rem; }
+    .tuto-acciones .tuto-btn-pri, .tuto-acciones .tuto-btn-sec { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tuto-anillo::after { animation: none; }
+    .tuto-card, .tuto-velo, .tuto-anillo { transition: none !important; }
+}

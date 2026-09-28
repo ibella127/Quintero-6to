@@ -1001,3 +1001,140 @@ body.dark-mode .tabla-notas td { border-bottom-color: rgba(75,163,217,0.12) !imp
     .tabla-notas { font-size: 0.85rem; }
     .tabla-notas th:nth-child(2), .tabla-notas td:nth-child(2) { display: none; }
 }
+
+
+/* ══════════════════════════════════════════════════════════════
+   RESPONSIVE — menú hamburguesa (solo pantallas chicas)
+   Va al final del archivo para ganarle a las reglas anteriores
+   sin tener que usar !important en todo.
+══════════════════════════════════════════════════════════════ */
+
+/* En escritorio el botón hamburguesa no existe */
+.menu-toggle { display: none; }
+
+@media (max-width: 768px) {
+
+    /* Barra superior: logo a la izquierda, modo + hamburguesa a la derecha */
+    .sidebar { padding: 0.6rem 1rem; gap: 0.5rem; }
+    .side-img { width: 70px; }
+    .sidebar .modo-btn { width: 52px; height: 52px; order: 2; }
+
+    /* Botón hamburguesa */
+    .menu-toggle {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 5px;
+        width: 44px;
+        height: 44px;
+        padding: 0;
+        border: none;
+        background: transparent;
+        border-radius: 12px;
+        cursor: pointer;
+        flex-shrink: 0;
+        order: 3;
+        -webkit-tap-highlight-color: transparent;
+    }
+    .menu-toggle:focus-visible { outline: 2px solid var(--sky-strong); outline-offset: 2px; }
+    .menu-toggle span {
+        display: block;
+        width: 24px;
+        height: 3px;
+        border-radius: 2px;
+        background: var(--sky-deep);
+        transition: transform 0.3s ease, opacity 0.2s ease, background-color 0.35s ease !important;
+    }
+    /* Se transforma en X al abrir */
+    .sidebar.menu-abierto .menu-toggle span:nth-child(1) { transform: translateY(8px) rotate(45deg); }
+    .sidebar.menu-abierto .menu-toggle span:nth-child(2) { opacity: 0; }
+    .sidebar.menu-abierto .menu-toggle span:nth-child(3) { transform: translateY(-8px) rotate(-45deg); }
+
+    /* Los 4 botones pasan a ser un panel desplegable debajo de la barra.
+       Cerrado = invisible pero con layout (así el JS del ícono de Profesores
+       puede seguir midiendo el tamaño real de los íconos). */
+    .nav-icons {
+        left: 0;
+        right: 0;
+        top: 100%;
+        transform: translateY(-8px);
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.2rem;
+        padding: 0.6rem 1rem 1rem;
+        max-height: calc(100vh - 80px);
+        overflow-y: auto;
+        background: rgba(250, 247, 241, 0.97);
+        border-bottom: 1px solid rgba(75, 163, 217, 0.25);
+        border-radius: 0 0 20px 20px;
+        box-shadow: 0 14px 28px rgba(26, 111, 168, 0.18);
+        opacity: 0;
+        visibility: hidden;
+        pointer-events: none;
+        transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s ease !important;
+    }
+    .sidebar.menu-abierto .nav-icons {
+        opacity: 1;
+        visibility: visible;
+        pointer-events: auto;
+        transform: translateY(0);
+    }
+
+    /* Mientras el menú está abierto, la barra no se esconde al scrollear */
+    .sidebar.menu-abierto.header-oculto {
+        transform: none;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    /* Cada opción: ícono a la izquierda, texto a la derecha, fácil de tocar */
+    .nav-item {
+        flex-direction: row;
+        justify-content: flex-start;
+        gap: 1rem;
+        padding: 0.55rem 0.8rem;
+        border-radius: 14px;
+        opacity: 1;
+    }
+    .nav-item:hover,
+    .nav-item.active { transform: none; background: rgba(75, 163, 217, 0.12); }
+    .nav-icons .nav-item img { width: 40px; height: 40px; flex-shrink: 0; }
+    .nav-icons .nav-icon-profes-wrap { width: 40px !important; height: 40px !important; flex-shrink: 0; }
+    .nav-icons .nav-icon-profes-img { margin: 0; }
+    .nav-label { font-size: 0.85rem; }
+
+    /* Modo oscuro del panel y del botón */
+    body.dark-mode .nav-icons {
+        background: rgba(8, 20, 38, 0.97);
+        border-bottom-color: rgba(75, 163, 217, 0.22);
+        box-shadow: 0 14px 28px rgba(0, 0, 0, 0.5);
+    }
+    body.dark-mode .menu-toggle span { background: var(--sky-mid); }
+    body.dark-mode .nav-item:hover,
+    body.dark-mode .nav-item.active { background: rgba(75, 163, 217, 0.16); }
+}
+
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+    .nav-icons,
+    .menu-toggle span { transition: none !important; }
+}
+
+@media (max-width: 400px) {
+    .sidebar { padding: 0.5rem 0.75rem; }
+}
+
+/* ── Ajustes generales de responsive (profesores) ── */
+@media (max-width: 768px) {
+    .main-content { padding: 0 1.25rem; }
+    .flex-center { padding: 2rem 0 3rem; }
+}
+@media (max-width: 640px) {
+    .krono-header-main { max-width: 180px; margin-bottom: 1.2rem; }
+}
+@media (max-width: 400px) {
+    .main-content { padding: 0 1rem; }
+    .section-title-prof { font-size: 1.7rem; }
+    .wizard-card { padding: 1.4rem 1rem; }
+    .wizard-nota-grid { gap: 5px; }
+}
