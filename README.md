@@ -1,6 +1,6 @@
 # 🕐 KRONO
 
-Sistema web de gestión escolar para **PRoA**, desarrollado por **Quintero & Leyria**.
+Sistema web de gestión escolar para **PRoA**, desarrollado por **Leyria & Quintero**.
 
 KRONO fue diseñado para optimizar y digitalizar distintas tareas de preceptoría, centralizando en una misma plataforma la gestión de asistencias, avisos, documentación, certificados y otra información académica de los estudiantes.
 
@@ -29,7 +29,7 @@ Los preceptores pueden:
 
 ### Para estudiantes
 
-Los estudiantes pueden ingresar utilizando su **correo institucional**, mediante un sistema de verificación con un código enviado al mismo.
+Los estudiantes pueden ingresar utilizando su **correo institucional**, mediante un sistema de verificación con un código de un solo uso enviado al mismo.
 
 Desde su cuenta pueden:
 
