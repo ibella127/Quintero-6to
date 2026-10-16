@@ -120,6 +120,24 @@ Para utilizar el proyecto, descargue el archivo `.zip` correspondiente y busque 
 5. Ejecutar el archivo `app.py`.
 6. Abrir **Google Chrome** y acceder a la dirección correspondiente al proyecto en `localhost:8080`, utilizando la carpeta del proyecto.
 
+### Librerías necesarias para el funcionamiento
+1. flask
+2. flask-cors
+3. pymysql
+4. werkzeug
+
+#### Código para instalarlas
+##### (Este código se escribe en la terminal de VSC)
+1. pip install flask
+2. pip install flask-cors
+3. pip install pymysql
+4. pip install werkzeug
+##### (Este código se escribe en la terminal de Python, pero si tenés Linux/MacOs o Git Bash dentro de VSC)
+python3 -m pip install flask flask-cors pymysql werkzeug
+##### (Este código se escribe en la terminal PowerShell/cmd)
+python -m pip install flask flask-cors pymysql werkzeug
+
+
 Ejemplo:
 
 ```text
