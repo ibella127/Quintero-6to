@@ -133,13 +133,14 @@ http://localhost:8080/carpeta/
 4. werkzeug
 
 #### Código para instalarlas
-##### (Este código se escribe en la terminal de VSC)
+##### (**Este código se escribe en la terminal de VSC**)
 1. pip install flask
 2. pip install flask-cors
 3. pip install pymysql
 4. pip install werkzeug
 
-##### (Este código se escribe en la terminal de Python, pero si tenés Linux/MacOs o Git Bash dentro de VSC)
+##### (**Este código se escribe en la terminal de Python, pero si tenés Linux/MacOs o Git Bash dentro de VSC**)
 python3 -m pip install flask flask-cors pymysql werkzeug
-##### (Este código se escribe en la terminal PowerShell/cmd)
+
+##### (**Este código se escribe en la terminal PowerShell/cmd**)
 python -m pip install flask flask-cors pymysql werkzeug
