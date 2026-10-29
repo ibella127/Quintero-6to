@@ -1885,3 +1885,176 @@ body.dark-mode .tardanza-label  { color: var(--ink-muted) !important; }
     .stats-resumen-grid { gap: 10px; }
     .btn-curso { padding: 16px 8px; }
 }
+
+/* Detalle de notas (transparencia del beneficio) */
+.notas-desplegable { margin-top: 10px; }
+.notas-desplegable > summary {
+    cursor: pointer; list-style: none; display: flex; align-items: center; gap: 8px;
+    font-size: 0.85rem; font-weight: 600; color: var(--sky-deep, #1a6fa8);
+    padding: 8px 12px; border-radius: 10px;
+    background: rgba(75,163,217,0.10); border: 1.5px solid rgba(75,163,217,0.25);
+    user-select: none;
+}
+.notas-desplegable > summary::-webkit-details-marker { display: none; }
+.notas-desplegable > summary::after { content: '▾'; margin-left: auto; transition: transform 0.25s ease; }
+.notas-desplegable[open] > summary::after { transform: rotate(180deg); }
+.notas-desplegable-badge {
+    background: var(--sky-deep, #1a6fa8); color: #fff; border-radius: 999px;
+    font-size: 0.72rem; padding: 1px 8px;
+}
+.notas-detalle { max-height: 220px; overflow-y: auto; margin-top: 8px; }
+body.dark-mode .notas-desplegable > summary { background: rgba(75,163,217,0.15); color: #a8d4f5; }
+
+/* ══════════════════════════════════════════════════════════════
+   TUTORIAL GUIADO
+   Velo desenfocado con "ventana" sobre lo que se explica +
+   tarjeta de vidrio. Los !important en transition son necesarios
+   por la regla global de modo oscuro (* { transition ... !important }).
+══════════════════════════════════════════════════════════════ */
+
+/* Botón "?" en la barra, al lado del modo claro/oscuro */
+.tuto-ayuda {
+    width: 38px; height: 38px; flex-shrink: 0; margin-left: 0.6rem;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 50%; cursor: pointer;
+    background: rgba(255,255,255,0.78);
+    border: 1.5px solid rgba(75,163,217,0.4);
+    color: var(--sky-deep);
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.45rem; font-weight: 600; line-height: 1;
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    transition: background-color 0.25s ease, color 0.25s ease,
+                border-color 0.25s ease, transform 0.2s ease !important;
+}
+.tuto-ayuda:hover { background: var(--sky-deep); border-color: var(--sky-deep); color: #fff; transform: translateY(-2px); }
+.tuto-ayuda:focus-visible { outline: 2px solid var(--sky-strong); outline-offset: 2px; }
+body.dark-mode .tuto-ayuda {
+    background: rgba(8,20,38,0.85); border-color: rgba(75,163,217,0.35); color: var(--sky-mid);
+}
+body.dark-mode .tuto-ayuda:hover { background: var(--sky-deep); border-color: var(--sky-deep); color: #fff; }
+
+/* Capas: bloqueo (evita clics) < velo (desenfoque) < anillo (oscurece + borde) < tarjeta */
+.tuto-bloqueo { position: fixed; inset: 0; z-index: 10500; background: transparent; }
+
+.tuto-velo {
+    position: fixed; inset: 0; z-index: 10501; pointer-events: none;
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    opacity: 0; transition: opacity 0.35s ease !important;
+}
+.tuto-anillo {
+    --tuto-dim: rgba(14, 42, 66, 0.55);
+    position: fixed; z-index: 10502; pointer-events: none;
+    border: 2px solid rgba(168,212,245,0.95);
+    box-shadow: 0 0 0 4px rgba(75,163,217,0.25),
+                0 0 28px rgba(75,163,217,0.55),
+                0 0 0 9999px var(--tuto-dim);
+    opacity: 0; transition: opacity 0.35s ease !important;
+}
+body.dark-mode .tuto-anillo { --tuto-dim: rgba(2, 8, 16, 0.68); border-color: rgba(75,163,217,0.9); }
+.tuto-velo.tuto-in, .tuto-anillo.tuto-in { opacity: 1; }
+
+/* Latido suave alrededor de lo resaltado */
+.tuto-anillo::after {
+    content: ''; position: absolute; inset: -7px; border-radius: inherit;
+    border: 2px solid var(--sky-strong); opacity: 0;
+    animation: tuto-latido 2s ease-out infinite;
+}
+@keyframes tuto-latido {
+    0%        { opacity: 0.7; transform: scale(0.985); }
+    70%, 100% { opacity: 0;   transform: scale(1.04); }
+}
+/* Pasos sin elemento (bienvenida): solo se oscurece todo */
+.tuto-anillo-sin { border-color: transparent !important; box-shadow: 0 0 0 9999px var(--tuto-dim); }
+.tuto-anillo-sin::after { display: none; }
+
+/* Tarjeta */
+.tuto-card {
+    position: fixed; z-index: 10503;
+    width: 360px; max-width: calc(100vw - 24px);
+    padding: 1.2rem 1.4rem 1.3rem;
+    text-align: left; outline: none;
+    background: rgba(255,255,255,0.94);
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+    border: 1.5px solid rgba(75,163,217,0.28);
+    border-radius: 22px;
+    box-shadow: 0 24px 60px rgba(10,20,40,0.35), 0 4px 16px rgba(26,111,168,0.18);
+    opacity: 1; transform: translateY(0);
+    transition: opacity 0.28s ease, transform 0.28s ease !important;
+}
+.tuto-card.tuto-cambiando { opacity: 0; transform: translateY(8px); pointer-events: none; }
+body.dark-mode .tuto-card {
+    background: rgba(8,20,38,0.94); border-color: rgba(75,163,217,0.25);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 4px 16px rgba(26,111,168,0.25);
+}
+
+.tuto-card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.7rem; }
+.tuto-contador {
+    font-size: 0.72rem; font-weight: 500; letter-spacing: 0.06em;
+    text-transform: uppercase; color: var(--sky-deep);
+}
+body.dark-mode .tuto-contador { color: var(--sky-mid); }
+.tuto-omitir {
+    background: transparent; border: none; cursor: pointer;
+    font-family: 'DM Sans', sans-serif; font-size: 0.85rem; color: var(--ink-muted);
+    padding: 4px 8px; margin-right: -8px; border-radius: 8px;
+    transition: color 0.2s ease !important;
+}
+.tuto-omitir:hover { color: var(--sky-deep); }
+body.dark-mode .tuto-omitir:hover { color: var(--sky-mid); }
+.tuto-omitir[hidden] { display: none; }
+
+.tuto-progreso {
+    height: 3px; border-radius: 3px; overflow: hidden;
+    background: rgba(75,163,217,0.18); margin-bottom: 1rem;
+}
+.tuto-progreso span {
+    display: block; height: 100%; border-radius: 3px;
+    background: linear-gradient(90deg, var(--sky-strong), var(--sky-deep));
+    transition: width 0.4s ease !important;
+}
+.tuto-titulo {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.65rem; font-weight: 600; line-height: 1.15;
+    letter-spacing: 0.01em; color: var(--ink); margin-bottom: 0.5rem;
+}
+.tuto-texto {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem; line-height: 1.55; color: var(--ink-muted); margin-bottom: 1.2rem;
+}
+.tuto-acciones { display: flex; gap: 10px; justify-content: flex-end; }
+
+.tuto-btn-pri, .tuto-btn-sec {
+    font-family: 'DM Sans', sans-serif; cursor: pointer; border-radius: 12px;
+    transition: background-color 0.25s ease, border-color 0.25s ease,
+                color 0.25s ease, transform 0.2s ease !important;
+}
+.tuto-btn-pri {
+    background: var(--sky-deep); color: #fff; border: none;
+    padding: 10px 20px; font-size: 0.95rem; font-weight: 500;
+}
+.tuto-btn-pri:hover { background: var(--sky-strong); transform: translateY(-2px); }
+.tuto-btn-sec {
+    background: transparent; border: 1.5px solid rgba(75,163,217,0.4);
+    padding: 9px 16px; font-size: 0.9rem; color: var(--ink-muted);
+}
+.tuto-btn-sec:hover:not(:disabled) { border-color: var(--sky-strong); color: var(--sky-deep); }
+.tuto-btn-sec:disabled { opacity: 0.35; cursor: default; }
+body.dark-mode .tuto-btn-sec { border-color: rgba(75,163,217,0.3); color: #7aa8c8; }
+body.dark-mode .tuto-btn-sec:hover:not(:disabled) { color: var(--sky-mid); }
+.tuto-btn-pri:focus-visible, .tuto-btn-sec:focus-visible, .tuto-omitir:focus-visible {
+    outline: 2px solid var(--sky-strong); outline-offset: 2px;
+}
+
+@media (max-width: 768px) {
+    .sidebar .tuto-ayuda { order: 2; margin-left: 0.3rem; width: 40px; height: 40px; }
+}
+@media (max-width: 640px) {
+    .tuto-card { padding: 1rem 1.1rem 1.1rem; border-radius: 18px; }
+    .tuto-titulo { font-size: 1.45rem; }
+    .tuto-texto { font-size: 0.9rem; margin-bottom: 1rem; }
+    .tuto-acciones .tuto-btn-pri, .tuto-acciones .tuto-btn-sec { flex: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .tuto-anillo::after { animation: none; }
+    .tuto-card, .tuto-velo, .tuto-anillo { transition: none !important; }
+}

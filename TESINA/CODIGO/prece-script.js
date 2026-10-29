@@ -1,3 +1,87 @@
+// ══════════════════════════════════════════
+//  CARTELES LINDOS — reemplazan alert() y confirm()
+//  kToast(mensaje, 'ok' | 'error' | 'info')
+//  await kConfirm(mensaje, { titulo, confirmar, cancelar, peligro })
+// ══════════════════════════════════════════
+function kEsc(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function kToast(mensaje, tipo = 'info', ms = 4200) {
+    let cont = document.getElementById('k-toast-cont');
+    if (!cont) {
+        cont = document.createElement('div');
+        cont.id = 'k-toast-cont';
+        cont.setAttribute('aria-live', 'polite');
+        document.body.appendChild(cont);
+    }
+    const iconos = { ok: '✓', error: '!', info: 'i' };
+    const t = document.createElement('div');
+    t.className = `k-toast k-toast-${iconos[tipo] ? tipo : 'info'}`;
+    t.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
+    t.innerHTML = `
+        <span class="k-toast-ico">${iconos[tipo] || 'i'}</span>
+        <span class="k-toast-msg">${kEsc(mensaje)}</span>
+        <button type="button" class="k-toast-x" aria-label="Cerrar">✕</button>`;
+    let cerrado = false;
+    const cerrar = () => {
+        if (cerrado) return;
+        cerrado = true;
+        t.classList.remove('visible');
+        t.classList.add('saliendo');
+        setTimeout(() => t.remove(), 260);
+    };
+    t.querySelector('.k-toast-x').addEventListener('click', cerrar);
+    cont.appendChild(t);
+    requestAnimationFrame(() => requestAnimationFrame(() => t.classList.add('visible')));
+    if (ms) setTimeout(cerrar, ms);
+}
+
+function kConfirm(mensaje, opciones = {}) {
+    const {
+        titulo = '¿Estás seguro?',
+        confirmar = 'Eliminar',
+        cancelar = 'Cancelar',
+        peligro = true
+    } = opciones;
+
+    return new Promise(resolve => {
+        const ov = document.createElement('div');
+        ov.className = 'k-confirm-overlay';
+        ov.innerHTML = `
+            <div class="k-confirm-backdrop"></div>
+            <div class="k-confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="k-confirm-titulo">
+                <div class="k-confirm-ico ${peligro ? 'peligro' : ''}">${peligro ? '🗑' : '?'}</div>
+                <h3 class="k-confirm-titulo" id="k-confirm-titulo">${kEsc(titulo)}</h3>
+                <p class="k-confirm-msg">${kEsc(mensaje)}</p>
+                <div class="k-confirm-botones">
+                    <button type="button" class="k-btn k-btn-sec" data-k="no">${kEsc(cancelar)}</button>
+                    <button type="button" class="k-btn ${peligro ? 'k-btn-peligro' : 'k-btn-ok'}" data-k="si">${kEsc(confirmar)}</button>
+                </div>
+            </div>`;
+
+        const cerrar = (resultado) => {
+            document.removeEventListener('keydown', onKey, true);
+            ov.classList.remove('visible');
+            setTimeout(() => ov.remove(), 200);
+            resolve(resultado);
+        };
+        const onKey = (e) => {
+            if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrar(false); }
+        };
+
+        ov.querySelector('[data-k="no"]').addEventListener('click', () => cerrar(false));
+        ov.querySelector('[data-k="si"]').addEventListener('click', () => cerrar(true));
+        ov.querySelector('.k-confirm-backdrop').addEventListener('click', () => cerrar(false));
+        document.addEventListener('keydown', onKey, true);
+
+        document.body.appendChild(ov);
+        requestAnimationFrame(() => requestAnimationFrame(() => ov.classList.add('visible')));
+        // Foco en "Cancelar" para que un Enter accidental no borre nada
+        ov.querySelector('[data-k="no"]').focus();
+    });
+}
+
 
 // ══════════════════════════════════════════════
 //  MODO OSCURO — un solo botón, muestra el modo al que vas
@@ -143,9 +227,31 @@ function cerrarSesion() {
  
 // --- PANEL DE CURSOS ---
  
+// Estado del panel "Alumnos": curso elegido, vista activa y datos cargados
+let _alCurso   = null;
+let _alVista   = 'todos';      // 'todos' | 'sinqr' | 'tarde'
+let _alAlumnos = [];
+let _alIngreso = null;         // respuesta de /prece/alumnos-ingreso
+let _alFecha   = '';
+
+function _alEsc(t) {
+    return String(t ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Fecha de hoy en hora local (toISOString usa UTC y de noche daría "mañana")
+function _alHoy() {
+    const d = new Date(), p = n => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
+
 function seleccionarCurso(anio) {
     const display = document.getElementById('display-datos');
- 
+    _alCurso   = anio;
+    _alVista   = 'todos';
+    _alIngreso = null;
+    if (!_alFecha) _alFecha = _alHoy();
+
     display.innerHTML = `
         <div class="curso-header">
             <h2 class="curso-titulo">${anio}° Año</h2>
@@ -153,42 +259,43 @@ function seleccionarCurso(anio) {
         </div>
         <p class="instruccion">Conectando con el servidor...</p>
     `;
- 
+
     fetch(`http://127.0.0.1:5000/alumnos/${anio}`)
         .then(r => r.json())
         .then(data => {
             if (data.error) throw new Error(data.error);
- 
-            let html = `
+            if (_alCurso !== anio) return;      // el usuario ya cambió de curso
+            _alAlumnos = data;
+
+            display.innerHTML = `
                 <div class="curso-header">
                     <h2 class="curso-titulo">${anio}° Año</h2>
                     <span class="curso-badge">✓ ${data.length} alumnos</span>
                 </div>
-                <div class="placeholder-tabla">
-                    <div class="placeholder-row header-row">
-                        <span>Nombre</span>
-                        <span>Apellido</span>
-                        <span>Email</span>
-                        <span>Acción</span>
-                    </div>
-                    <div class="tabla-scroll-wrap" id="scroll-wrap">
-            `;
- 
-            data.forEach(alumno => {
-                html += `
-                    <div class="placeholder-row row-dim">
-                        <span>${alumno.nombre}</span>
-                        <span>${alumno.apellido}</span>
-                        <span class="email-col">${alumno.gmail}</span>
-                        <span><button class="btn-mini">Editar</button></span>
-                    </div>
-                `;
-            });
- 
-            display.innerHTML = html;
- 
-            const wrap = document.getElementById('scroll-wrap');
 
+                <div class="al-subtabs" role="tablist">
+                    <button type="button" id="al-tab-todos" class="al-subtab activo" onclick="alCambiarVista('todos')">
+                        👥 Todos <span class="al-subtab-n">${data.length}</span>
+                    </button>
+                    <button type="button" id="al-tab-sinqr" class="al-subtab al-subtab-falta" onclick="alCambiarVista('sinqr')">
+                        🚫 Sin QR <span class="al-subtab-n" id="al-n-sinqr">–</span>
+                    </button>
+                    <button type="button" id="al-tab-tarde" class="al-subtab al-subtab-tarde" onclick="alCambiarVista('tarde')">
+                        ⏰ Llegaron tarde <span class="al-subtab-n" id="al-n-tarde">–</span>
+                    </button>
+                </div>
+
+                <div class="al-fecha-wrap" id="al-fecha-wrap" style="display:none;">
+                    <label for="al-fecha">Fecha</label>
+                    <input type="date" id="al-fecha" class="aviso-input" value="${_alFecha}" max="${_alHoy()}" onchange="alCambiarFecha(this.value)">
+                    <button type="button" class="btn-mini" onclick="alCambiarFecha(_alHoy())">Hoy</button>
+                </div>
+
+                <div id="al-vista" style="width:100%;"></div>
+            `;
+
+            alRenderVista();
+            alCargarIngresos();   // trae sin QR / tarde para completar los contadores
         })
         .catch(err => {
             console.error('Error al obtener datos:', err);
@@ -200,11 +307,127 @@ function seleccionarCurso(anio) {
                     ❌ No se pudo conectar con el servidor.
                 </p>
                 <p class="instruccion">Asegurate de que app.py esté corriendo.<br>
-                <small style="color:#999;">Detalle: ${err.message}</small></p>
+                <small style="color:#999;">Detalle: ${_alEsc(err.message)}</small></p>
             `;
         });
 }
- 
+
+function alCambiarVista(vista) {
+    _alVista = vista;
+    ['todos', 'sinqr', 'tarde'].forEach(v => {
+        const b = document.getElementById('al-tab-' + v);
+        if (b) b.classList.toggle('activo', v === vista);
+    });
+    const fw = document.getElementById('al-fecha-wrap');
+    if (fw) fw.style.display = vista === 'todos' ? 'none' : 'flex';
+    alRenderVista();
+}
+
+function alCambiarFecha(valor) {
+    if (!valor) return;
+    _alFecha = valor;
+    const inp = document.getElementById('al-fecha');
+    if (inp) inp.value = valor;
+    alCargarIngresos();
+}
+
+function alCargarIngresos() {
+    const anio  = _alCurso;
+    const fecha = _alFecha || _alHoy();
+    _alIngreso = null;
+    alActualizarContadores();
+    if (_alVista !== 'todos') alRenderVista();   // muestra "Cargando..."
+
+    fetch(`http://127.0.0.1:5000/prece/alumnos-ingreso/${anio}?fecha=${fecha}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) throw new Error(data.error);
+            if (_alCurso !== anio || (_alFecha || _alHoy()) !== fecha) return;  // respuesta vieja
+            _alIngreso = data;
+            alActualizarContadores();
+            alRenderVista();
+        })
+        .catch(err => {
+            if (_alCurso !== anio) return;
+            _alIngreso = { error: err.message };
+            alRenderVista();
+        });
+}
+
+function alActualizarContadores() {
+    const a = document.getElementById('al-n-sinqr');
+    const b = document.getElementById('al-n-tarde');
+    if (!a || !b) return;
+    const ok = _alIngreso && !_alIngreso.error;
+    a.textContent = ok ? _alIngreso.sin_qr.length : '–';
+    b.textContent = ok ? _alIngreso.tarde.length  : '–';
+}
+
+// Arma una tabla con el mismo estilo que la lista de alumnos
+function _alTabla(columnas, filas, clase = '') {
+    return `
+        <div class="placeholder-tabla ${clase}">
+            <div class="placeholder-row header-row">
+                ${columnas.map(c => `<span>${c}</span>`).join('')}
+            </div>
+            <div class="tabla-scroll-wrap" id="scroll-wrap">
+                ${filas.map(f => `
+                    <div class="placeholder-row row-dim">
+                        <span>${_alEsc(f.nombre)}</span>
+                        <span>${_alEsc(f.apellido)}</span>
+                        <span class="email-col">${_alEsc(f.gmail)}</span>
+                        ${f.estado}
+                    </div>`).join('')}
+            </div>
+        </div>`;
+}
+
+function alRenderVista() {
+    const cont = document.getElementById('al-vista');
+    if (!cont) return;
+
+    // ── Todos ──
+    if (_alVista === 'todos') {
+        cont.innerHTML = _alTabla(
+            ['Nombre', 'Apellido', 'Email'],
+            _alAlumnos.map(a => ({ ...a, estado: '' })),
+            'al-tabla-3'
+        );
+        return;
+    }
+
+    // ── Sin QR / Tarde: dependen de la fecha elegida ──
+    if (!_alIngreso) { cont.innerHTML = '<p class="instruccion">Cargando...</p>'; return; }
+    if (_alIngreso.error) {
+        cont.innerHTML = `<p style="color:#ff4d4d;">❌ Error: ${_alEsc(_alIngreso.error)}</p>`;
+        return;
+    }
+
+    const d = _alIngreso;
+    const aviso = d.aviso ? `<p class="al-aviso">ℹ️ ${_alEsc(d.aviso)}</p>` : '';
+    const noHabil = /fin de semana|feriado|todavía no llegó/i.test(d.aviso || '');
+    if (noHabil) { cont.innerHTML = aviso; return; }
+
+    const resumen = `
+        <div class="ingresos-resumen">
+            <span class="ingreso-chip ingreso-ok">✅ A tiempo: ${d.a_tiempo}</span>
+            <span class="ingreso-chip ingreso-tarde">⚠️ Tarde: ${d.tarde.length}</span>
+            <span class="ingreso-chip al-chip-falta">🚫 Sin QR: ${d.sin_qr.length}</span>
+            <span class="ingreso-chip">Total: ${d.total}</span>
+        </div>`;
+
+    if (_alVista === 'sinqr') {
+        cont.innerHTML = aviso + resumen + (d.sin_qr.length
+            ? _alTabla(['Nombre', 'Apellido', 'Email', 'Estado'],
+                d.sin_qr.map(a => ({ ...a, estado: '<span class="al-estado al-estado-falta">Sin QR</span>' })))
+            : '<p class="instruccion">🎉 Todos los alumnos registraron su QR en esa fecha.</p>');
+    } else {
+        cont.innerHTML = aviso + resumen + (d.tarde.length
+            ? _alTabla(['Nombre', 'Apellido', 'Email', 'Ingresó'],
+                d.tarde.map(a => ({ ...a, estado: `<span class="al-estado al-estado-tarde">${_alEsc(a.hora)}</span>` })))
+            : '<p class="instruccion">Nadie llegó tarde en esa fecha.</p>');
+    }
+}
 
 // ══════════════════════════════════════════
 //  PESTAÑA DE MOTIVOS — dividido por curso
@@ -275,8 +498,8 @@ function toggleMotivos(btn) {
     chevron.textContent = abierto ? '▾' : '▴';
 }
 
-function eliminarMotivo(id, btn) {
-    if (!confirm('¿Eliminás este motivo? No se puede deshacer.')) return;
+async function eliminarMotivo(id, btn) {
+    if (!(await kConfirm('Este motivo se borra de la base de datos y no se puede recuperar.', { titulo: '¿Eliminar este motivo?' }))) return;
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     fetch(`http://127.0.0.1:5000/prece/eliminar-motivo/${id}`, { method: 'DELETE' })
         .then(r => r.json())
@@ -304,67 +527,476 @@ function eliminarMotivo(id, btn) {
                 }
             } else {
                 if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
-                alert('Error al eliminar: ' + (data.error || 'desconocido'));
+                kToast('No se pudo eliminar: ' + (data.error || 'error desconocido'), 'error');
             }
         })
         .catch(() => {
             if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+            kToast('No se pudo eliminar. Revisá la conexión con el servidor.', 'error');
         });
 }
 
 // ══════════════════════════════════════════
-//  PESTAÑA DE EVIDENCIAS — galería de fotos por curso
+//  PESTAÑA DE EVIDENCIAS — historial de avisos y peticiones de documentación
 // ══════════════════════════════════════════
-function cargarEvidenciasPrece() {
-    const contenedor = document.getElementById('evidencias-prece-contenedor');
-    if (!contenedor) return;
+const EV_API = 'http://127.0.0.1:5000';
+const _ev = {
+    avisos:     { datos: [], anio: null, mes: null, cargando: false, error: '' },
+    peticiones: { datos: [], anio: null, mes: null, cargando: false, error: '' }
+};
 
-    const btnsEv = [1,2,3,4,5,6].map(n =>
-        `<button class="btn-curso-mini" onclick="cargarEvidenciasCurso(${n}, this)">${n}° Año</button>`
-    ).join('');
-    contenedor.innerHTML =
-        `<div class="selector-cursos-mini" id="selector-evidencias">${btnsEv}</div>` +
-        `<div class="evidencias-resultado" id="evidencias-resultado">` +
-        `<p class="instruccion">Seleccioná un curso para ver las evidencias</p></div>`;
+function evEsc(t) {
+    return String(t == null ? '' : t).replace(/[&<>"']/g, ch =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+}
+function evFecha(iso) {
+    if (!iso) return '—';
+    const p = String(iso).slice(0, 10).split('-');
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : iso;
+}
+function evFechaHora(txt) {
+    if (!txt) return '';
+    const [f, hms] = String(txt).split(' ');
+    return `${evFecha(f)}${hms ? ' ' + hms.slice(0, 5) : ''}`;
 }
 
-function cargarEvidenciasCurso(anio, btn) {
-    document.querySelectorAll('#selector-evidencias .btn-curso-mini')
-        .forEach(b => b.classList.remove('activo'));
-    btn.classList.add('activo');
+function iniciarPanelEvidencias() {
+    evCambiarSubtab(_evSubtabActual || 'avisos');
+    evCargar('avisos');
+    evCargar('peticiones');
+}
 
-    const resultado = document.getElementById('evidencias-resultado');
-    resultado.innerHTML = '<p class="instruccion" style="padding:0.5rem;">Cargando...</p>';
+let _evSubtabActual = 'avisos';
+function evCambiarSubtab(tipo) {
+    _evSubtabActual = tipo;
+    ['avisos', 'peticiones'].forEach(t => {
+        const sec = document.getElementById(`ev-sec-${t}`);
+        const btn = document.getElementById(`ev-subtab-${t}`);
+        if (sec) sec.style.display = t === tipo ? '' : 'none';
+        if (btn) btn.classList.toggle('activo', t === tipo);
+    });
+}
 
-    fetch(`http://127.0.0.1:5000/prece/evidencias?anio=${anio}`)
+function evUrl(tipo) {
+    return tipo === 'avisos' ? `${EV_API}/prece/historial-avisos` : `${EV_API}/prece/peticiones`;
+}
+
+// Recarga desde el servidor. Con `reiniciar` se vuelve a elegir solo el año/mes más reciente.
+function evCargar(tipo, reiniciar) {
+    const e = _ev[tipo];
+    const mio = (e.seq = (e.seq || 0) + 1);   // solo la última consulta pisa la pantalla
+    if (reiniciar) { e.anio = null; e.mes = null; }
+    e.cargando = true; e.error = '';
+    evRender(tipo);
+    return fetch(evUrl(tipo))
         .then(r => r.json())
-        .then(fotos => {
-            if (!fotos.length) {
-                resultado.innerHTML = `<p class="instruccion">No hay fotos de clase en ${anio}° año.</p>`;
-                return;
-            }
-            resultado.innerHTML = `
-                <div class="evidencias-prece-galeria">
-                    ${fotos.map(f => `
-                        <div class="ev-prece-carta" id="ev-carta-${f.id}">
-                            <img src="http://127.0.0.1:5000/uploads/fotos/${f.archivo}"
-                                 alt="${f.descripcion || 'Foto'}"
-                                 class="ev-prece-img"
-                                 onclick="abrirLightbox('http://127.0.0.1:5000/uploads/fotos/${f.archivo}', '${(f.descripcion || '').replace(/'/g, "\\'")}', '${f.apellido}, ${f.nombre}', '${f.fecha}')">
-                            <div class="ev-prece-info">
-                                <span class="ev-prece-alumno">${f.apellido}, ${f.nombre}</span>
-                                <span class="ev-prece-desc">${f.descripcion || 'Sin descripción'}</span>
-                                <span class="ev-prece-fecha">${f.fecha}</span>
-                                <button class="btn-eliminar-foto" onclick="eliminarFoto(${f.id}, '${f.archivo}', this)">🗑 Eliminar</button>
-                            </div>
-                        </div>
-                    `).join('')}
-                </div>
-            `;
+        .then(datos => {
+            if (mio !== e.seq) return;
+            if (!Array.isArray(datos)) throw new Error(datos.error || 'Respuesta inesperada');
+            datos.forEach((d, i) => { d._i = i; });
+            e.datos = datos;
         })
-        .catch(err => {
-            resultado.innerHTML = `<p style="color:#ff4d4d;">❌ Error: ${err.message}</p>`;
-        });
+        .catch(err => { if (mio !== e.seq) return; e.datos = []; e.error = err.message || 'Error de conexión'; })
+        .finally(() => { if (mio !== e.seq) return; e.cargando = false; evRender(tipo); });
+}
+
+// ── Año → mes → día ───────────────────────
+const _EV_DIAS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+
+// Meses (YYYY-MM) con registros del año elegido, del más nuevo al más viejo
+function evMeses(tipo) {
+    const e = _ev[tipo];
+    const set = new Set(e.datos.filter(d => d.anio === e.anio).map(d => String(d.fecha).slice(0, 7)));
+    return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+// Si todavía no hay año elegido toma el del registro más reciente; y deja siempre un mes válido
+function evAjustarSeleccion(tipo) {
+    const e = _ev[tipo];
+    if (!e.datos.length) return;
+    if (!e.anio) {
+        const ultimo = e.datos.reduce((a, b) => (`${a.fecha} ${a.hora}` >= `${b.fecha} ${b.hora}` ? a : b));
+        e.anio = ultimo.anio;
+        e.mes  = String(ultimo.fecha).slice(0, 7);
+    }
+    const meses = evMeses(tipo);
+    if (!meses.includes(e.mes)) e.mes = meses[0] || null;
+}
+
+function evElegirAnio(tipo, anio) {
+    const e = _ev[tipo];
+    e.anio = anio;
+    e.mes  = null;      // evAjustarSeleccion elige el mes más reciente de ese año
+    evRender(tipo);
+}
+function evElegirMes(tipo, mes) {
+    _ev[tipo].mes = mes;
+    evRender(tipo);
+}
+
+function evEtiquetaDia(fecha) {
+    const [y, m, d] = fecha.split('-').map(Number);
+    return `${_EV_DIAS[new Date(y, m - 1, d).getDay()]} ${d} de ${NOMBRES_MESES[m].toLowerCase()}`;
+}
+const evPlural = (n, uno, varios) => `${n} ${n === 1 ? uno : varios}`;
+
+function evTarjetaAviso(a) {
+    return `
+        <div class="aviso-card-item aviso-card-pendiente">
+            <span class="aci-nombre">⏰ ${evEsc(a.hora)} · Aviso a todo el curso</span>
+            <span class="aci-motivo" title="${evEsc(a.motivo)}">📝 ${evEsc(a.motivo)}</span>
+            <div class="aci-footer">
+                <span class="aci-estado">👥 ${evPlural(a.total || 0, 'alumno', 'alumnos')}</span>
+                <div class="aci-footer-btns">
+                    <button type="button" class="ev-icono" title="Ver detalle" onclick="evVerAviso(${a._i})">👁</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function evTarjetaPeticion(p) {
+    const ok = p.estado === 'entregado';
+    return `
+        <div class="aviso-card-item ${ok ? 'aviso-card-anotado' : 'aviso-card-pendiente'}">
+            <span class="aci-nombre">👤 ${evEsc(p.apellido)}, ${evEsc(p.nombre)}</span>
+            <span class="aci-hora">⏰ ${evEsc(p.hora)}</span>
+            <span class="aci-motivo" title="${evEsc(p.documento)}">📄 ${evEsc(p.documento)}</span>
+            <div class="aci-footer">
+                <span class="aci-estado">${ok ? '✅ Entregado' : '⏳ Pendiente'}</span>
+                <div class="aci-footer-btns">
+                    <button type="button" class="ev-icono" title="Ver detalle" onclick="evVerPeticion(${p.id})">👁</button>
+                    <button type="button" class="ev-icono" title="Más acciones" onclick="evMenuPeticion(event, ${p.id}, '${p.estado}')">⋮</button>
+                </div>
+            </div>
+        </div>`;
+}
+
+function evBloqueDia(tipo, fecha, items) {
+    const etiqueta = evEtiquetaDia(fecha);
+    const unidad   = tipo === 'avisos' ? ['aviso', 'avisos'] : ['petición', 'peticiones'];
+    // Los avisos son evidencia: se conservan. Solo las peticiones se pueden borrar por día.
+    const borrar = tipo === 'peticiones'
+        ? `<button type="button" class="btn-eliminar-fecha" title="Eliminar las peticiones de este día" onclick="evEliminarPeticionesDia('${fecha}')">🗑</button>`
+        : '';
+
+    let cuerpo;
+    if (tipo === 'avisos') {
+        const orden = [...items].sort((a, b) => b.hora.localeCompare(a.hora));
+        cuerpo = `<div class="avisos-dos-columnas">${orden.map(evTarjetaAviso).join('')}</div>`;
+    } else {
+        const orden = [...items].sort((a, b) => b.hora.localeCompare(a.hora) || b.id - a.id);
+        const pend = orden.filter(p => p.estado !== 'entregado');
+        const entr = orden.filter(p => p.estado === 'entregado');
+        cuerpo = `
+            <div class="avisos-dos-columnas">
+                <div class="avisos-col">
+                    <h4 class="avisos-col-titulo avisos-col-titulo--pendiente">⏳ Pendientes <span class="avisos-col-badge">${pend.length}</span></h4>
+                    ${pend.length ? pend.map(evTarjetaPeticion).join('') : '<p class="avisos-col-vacio">Sin peticiones pendientes</p>'}
+                </div>
+                <div class="avisos-col">
+                    <h4 class="avisos-col-titulo avisos-col-titulo--anotado">✅ Entregadas por el alumno <span class="avisos-col-badge">${entr.length}</span></h4>
+                    ${entr.length ? entr.map(evTarjetaPeticion).join('') : '<p class="avisos-col-vacio">Sin peticiones entregadas</p>'}
+                </div>
+            </div>`;
+    }
+
+    return `
+        <div class="avisos-fecha-bloque">
+            <div class="avisos-fecha-separador">
+                <span class="avisos-fecha-label">📅 ${etiqueta}</span>
+                <span class="avisos-fecha-badge">${evPlural(items.length, unidad[0], unidad[1])}</span>
+                ${borrar}
+            </div>
+            ${cuerpo}
+        </div>`;
+}
+
+function evRender(tipo) {
+    const cont = document.getElementById(`ev-tabla-${tipo}`);
+    if (!cont) return;
+    const e = _ev[tipo];
+    const nombre = tipo === 'avisos' ? 'avisos de ingreso tarde' : 'peticiones de documentación';
+    const unidad = tipo === 'avisos' ? ['aviso', 'avisos'] : ['petición', 'peticiones'];
+
+    if (e.cargando && !e.datos.length) { cont.innerHTML = '<p class="instruccion">Cargando...</p>'; return; }
+    if (e.error) { cont.innerHTML = `<p class="ev-error">❌ ${evEsc(e.error)}</p>`; return; }
+    if (!e.datos.length) {
+        cont.innerHTML = `<div class="ev-vacio"><p class="instruccion">Todavía no hay ${nombre}.</p></div>`;
+        return;
+    }
+
+    evAjustarSeleccion(tipo);
+
+    const botonesAnio = [1, 2, 3, 4, 5, 6].map(n =>
+        `<button type="button" class="btn-curso-mini ${n === e.anio ? 'activo' : ''}" onclick="evElegirAnio('${tipo}',${n})">${n}° Año</button>`
+    ).join('');
+
+    const delAnio = e.datos.filter(d => d.anio === e.anio);
+    let panel;
+    if (!delAnio.length) {
+        panel = `<p class="instruccion">No hay ${nombre} en ${e.anio}° año.</p>`;
+    } else {
+        const meses = evMeses(tipo);
+        const botonesMes = meses.map(m => {
+            const [y, mm] = m.split('-').map(Number);
+            return `<button type="button" class="btn-curso-mini ${m === e.mes ? 'activo' : ''}" onclick="evElegirMes('${tipo}','${m}')">${NOMBRES_MESES[mm]} ${y}</button>`;
+        }).join('');
+
+        const delMes = delAnio.filter(d => String(d.fecha).startsWith(e.mes));
+        const porFecha = {};
+        delMes.forEach(d => { (porFecha[d.fecha] = porFecha[d.fecha] || []).push(d); });
+        const fechas = Object.keys(porFecha).sort((a, b) => b.localeCompare(a));
+
+        const [y, mm] = e.mes.split('-').map(Number);
+        panel = `
+            <div class="selector-cursos-mini ev-selector-meses">${botonesMes}</div>
+            <div class="avisos-mes-header">
+                <h4 class="avisos-mes-titulo">📅 ${NOMBRES_MESES[mm]} ${y} — ${e.anio}° Año</h4>
+                <span class="avisos-fecha-badge" style="margin-left:0;">${evPlural(delMes.length, unidad[0], unidad[1])}</span>
+            </div>
+            ${fechas.map(f => evBloqueDia(tipo, f, porFecha[f])).join('')}`;
+    }
+
+    cont.innerHTML = `
+        <div class="selector-cursos-mini">${botonesAnio}</div>
+        <div class="ev-panel-mes">${panel}</div>`;
+}
+
+// Borra todas las peticiones de un día del año/curso que se está viendo
+async function evEliminarPeticionesDia(fecha) {
+    const e = _ev.peticiones;
+    const ids = e.datos.filter(p => p.anio === e.anio && p.fecha === fecha).map(p => p.id);
+    if (!ids.length) return;
+    const etiqueta = evEtiquetaDia(fecha);
+    if (!(await kConfirm(`Se borran las ${ids.length} petición(es) de ${e.anio}° Año del ${etiqueta}. Esta acción no se puede deshacer.`,
+                         { titulo: '¿Eliminar las peticiones de este día?' }))) return;
+    try {
+        const resp = await Promise.all(ids.map(id =>
+            fetch(`${EV_API}/prece/peticiones/${id}`, { method: 'DELETE' }).then(r => r.json())));
+        const falla = resp.find(r => r.error);
+        if (falla) throw new Error(falla.error);
+    } catch (err) {
+        kToast('No se pudieron eliminar todas: ' + err.message, 'error');
+    }
+    evCargar('peticiones');
+}
+
+// ── Modal ─────────────────────────────────
+function evAbrirModal(html) {
+    document.getElementById('ev-modal-contenido').innerHTML = html;
+    document.getElementById('ev-modal-overlay').style.display = 'flex';
+}
+function evCerrarModal() {
+    const o = document.getElementById('ev-modal-overlay');
+    if (o) o.style.display = 'none';
+}
+document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { evCerrarModal(); evCerrarMenu(); }
+});
+
+function evFila(label, valor) {
+    return `<div class="ev-det-fila"><span class="ev-det-label">${label}</span><span class="ev-det-valor">${valor}</span></div>`;
+}
+
+// ── Detalle de un aviso ───────────────────
+function evVerAviso(i) {
+    const a = _ev.avisos.datos.find(x => x._i === i);
+    if (!a) return;
+    evAbrirModal('<p class="instruccion">Cargando...</p>');
+
+    const q = a.id
+        ? new URLSearchParams({ id: a.id })
+        : new URLSearchParams({ anio: a.anio, fecha: a.fecha, hora: a.hora, motivo: a.motivo });
+
+    fetch(`${EV_API}/prece/historial-avisos/detalle?${q}`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) throw new Error(d.error);
+            const alumnos = d.alumnos.length
+                ? `<div class="ev-chips">${d.alumnos.map(al =>
+                      `<span class="ev-chip ${al.anotado ? 'ev-chip-ok' : ''}" title="${al.anotado ? 'Aviso anotado' : 'Aviso sin anotar'}">${evEsc(al.apellido)}, ${evEsc(al.nombre)}${al.anotado ? ' ✓' : ''}</span>`).join('')}</div>`
+                : '<p class="ev-nota">Los avisos individuales de este envío ya se eliminaron de «Avisos registrados». El envío se conserva en el historial.</p>';
+            evAbrirModal(`
+                <h3 class="ev-modal-titulo">🔔 Aviso de ingreso tarde</h3>
+                ${evFila('Fecha', evFecha(d.fecha))}
+                ${evFila('Hora', evEsc(d.hora))}
+                ${evFila('Enviado a', `${d.anio}° año completo (${d.total} alumno${d.total !== 1 ? 's' : ''})`)}
+                ${d.enviado_en ? evFila('Registrado', evFechaHora(d.enviado_en)) : ''}
+                <div class="ev-det-bloque"><span class="ev-det-label">Motivo del ingreso posterior</span><p class="ev-det-msg">${evEsc(d.motivo)}</p></div>
+                <div class="ev-det-bloque"><span class="ev-det-label">Alumnos relacionados</span>${alumnos}</div>`);
+        })
+        .catch(err => evAbrirModal(`<p class="ev-error">❌ ${evEsc(err.message)}</p>`));
+}
+
+// ── Detalle de una petición ───────────────
+function evVerPeticion(id) {
+    evCerrarMenu();
+    evAbrirModal('<p class="instruccion">Cargando...</p>');
+    fetch(`${EV_API}/prece/peticiones/${id}`)
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) throw new Error(d.error);
+            const entregado = d.estado === 'entregado';
+            let archivo = '';
+            if (entregado) {
+                archivo = d.archivo
+                    ? `<div class="ev-det-bloque"><span class="ev-det-label">Archivo presentado</span>
+                           <a class="ev-link-archivo" href="${evEsc(d.archivo.url)}" target="_blank" rel="noopener">📎 ${evEsc(d.archivo.descripcion || d.archivo.nombre)}</a>
+                           <p class="ev-nota">Subido el ${evFecha(d.archivo.fecha)}</p></div>`
+                    : `<div class="ev-det-bloque"><p class="ev-nota">Marcada como entregada sin archivo adjunto en Krono (por ejemplo, entregada en papel).</p></div>`;
+            }
+            evAbrirModal(`
+                <h3 class="ev-modal-titulo">📄 Petición de documentación</h3>
+                ${evFila('Alumno', `${evEsc(d.apellido)}, ${evEsc(d.nombre)} · ${d.anio}° año`)}
+                ${evFila('Pedida el', `${evFecha(d.fecha)} ${evEsc(d.hora)}`)}
+                ${evFila('Documento solicitado', evEsc(d.documento))}
+                ${evFila('Estado', `<span class="ev-badge ev-badge-${entregado ? 'ok' : 'pend'}">${entregado ? 'Entregado' : 'Pendiente'}</span>${entregado && d.entregado_en ? ` <span class="ev-nota">el ${evFechaHora(d.entregado_en)}</span>` : ''}`)}
+                ${d.mensaje ? `<div class="ev-det-bloque"><span class="ev-det-label">Mensaje</span><p class="ev-det-msg">${evEsc(d.mensaje)}</p></div>` : ''}
+                ${archivo}
+                <div class="ev-modal-botones">
+                    <button type="button" class="ev-btn-sec" onclick="evCambiarEstado(${d.id}, '${entregado ? 'pendiente' : 'entregado'}')">${entregado ? 'Marcar como pendiente' : 'Marcar como entregado'}</button>
+                    <button type="button" class="ev-btn-peligro" onclick="evEliminarPeticion(${d.id})">🗑 Eliminar</button>
+                </div>`);
+        })
+        .catch(err => evAbrirModal(`<p class="ev-error">❌ ${evEsc(err.message)}</p>`));
+}
+
+// ── Menú ⋮ ────────────────────────────────
+function evCerrarMenu() {
+    const m = document.getElementById('ev-menu');
+    if (m) m.remove();
+}
+function evMenuPeticion(ev, id, estado) {
+    ev.stopPropagation();
+    const existente = document.getElementById('ev-menu');
+    const mismo = existente && existente.dataset.id === String(id);
+    evCerrarMenu();
+    if (mismo) return;
+
+    const m = document.createElement('div');
+    m.id = 'ev-menu';
+    m.className = 'ev-menu';
+    m.dataset.id = id;
+    m.innerHTML = `
+        <button type="button" onclick="evVerPeticion(${id})">👁 Ver detalle</button>
+        <button type="button" onclick="evCambiarEstado(${id}, '${estado === 'entregado' ? 'pendiente' : 'entregado'}')">${estado === 'entregado' ? '⏳ Marcar como pendiente' : '✅ Marcar como entregado'}</button>
+        <button type="button" class="ev-menu-peligro" onclick="evEliminarPeticion(${id})">🗑 Eliminar petición</button>`;
+    document.body.appendChild(m);
+
+    const r = ev.currentTarget.getBoundingClientRect();
+    const ancho = m.offsetWidth;
+    m.style.top  = `${Math.min(window.innerHeight - m.offsetHeight - 8, r.bottom + 6)}px`;
+    m.style.left = `${Math.max(8, Math.min(window.innerWidth - ancho - 8, r.right - ancho))}px`;
+}
+document.addEventListener('click', e => {
+    if (!e.target.closest('#ev-menu')) evCerrarMenu();
+});
+window.addEventListener('scroll', evCerrarMenu, true);
+
+// ── Acciones sobre peticiones ─────────────
+function evCambiarEstado(id, estado) {
+    evCerrarMenu();
+    fetch(`${EV_API}/prece/peticiones/${id}/estado`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) throw new Error(d.error);
+        evCerrarModal();
+        evCargar('peticiones');
+    })
+    .catch(err => kToast('No se pudo cambiar el estado: ' + err.message, 'error'));
+}
+
+async function evEliminarPeticion(id) {
+    evCerrarMenu();
+    if (!(await kConfirm('La petición se borra del historial y no se puede recuperar.', { titulo: '¿Eliminar esta petición?' }))) return;
+    fetch(`${EV_API}/prece/peticiones/${id}`, { method: 'DELETE' })
+        .then(r => r.json())
+        .then(d => {
+            if (d.error) throw new Error(d.error);
+            evCerrarModal();
+            evCargar('peticiones');
+        })
+        .catch(err => kToast('No se pudo eliminar: ' + err.message, 'error'));
+}
+
+// ── Nueva petición ────────────────────────
+function evNuevaPeticion() {
+    evAbrirModal(`
+        <h3 class="ev-modal-titulo">📄 Nueva petición de documentación</h3>
+        <p class="ev-nota" style="margin-bottom:0.8rem;">Se la pedís a un alumno específico y le llega como anuncio.</p>
+        <div class="ev-form">
+            <label class="ev-field"><span>Curso</span>
+                <select id="ev-np-curso" class="aviso-select" onchange="evNpCargarAlumnos()">
+                    <option value="">— Seleccioná un curso —</option>
+                    ${[1,2,3,4,5,6].map(n => `<option value="${n}">${n}° año</option>`).join('')}
+                </select>
+            </label>
+            <label class="ev-field"><span>Alumno</span>
+                <select id="ev-np-alumno" class="aviso-select" disabled><option value="">— Primero elegí el curso —</option></select>
+            </label>
+            <label class="ev-field"><span>Documento solicitado</span>
+                <input type="text" id="ev-np-doc" class="aviso-input" maxlength="300" placeholder="Ej: Certificado de alumno regular">
+            </label>
+            <label class="ev-field"><span>Mensaje (opcional)</span>
+                <textarea id="ev-np-msg" class="aviso-textarea" placeholder="Ej: Lo necesitamos antes del viernes."></textarea>
+            </label>
+            <p id="ev-np-error" class="ev-error" style="display:none;"></p>
+        </div>
+        <div class="ev-modal-botones">
+            <button type="button" class="ev-btn-sec" onclick="evCerrarModal()">Cancelar</button>
+            <button type="button" id="ev-np-enviar" class="ev-btn-nuevo" onclick="evEnviarPeticion()">Enviar petición</button>
+        </div>`);
+}
+
+function evNpCargarAlumnos() {
+    const curso  = document.getElementById('ev-np-curso').value;
+    const select = document.getElementById('ev-np-alumno');
+    if (!curso) { select.disabled = true; select.innerHTML = '<option value="">— Primero elegí el curso —</option>'; return; }
+    select.disabled = true;
+    select.innerHTML = '<option value="">Cargando...</option>';
+    fetch(`${EV_API}/alumnos-lista/${curso}`)
+        .then(r => r.json())
+        .then(alumnos => {
+            select.innerHTML = '<option value="">— Seleccioná un alumno —</option>' +
+                alumnos.map(a => `<option value="${a.id_alumno}">${evEsc(a.apellido)}, ${evEsc(a.nombre)}</option>`).join('');
+            select.disabled = false;
+        })
+        .catch(() => { select.innerHTML = '<option value="">Error al cargar</option>'; });
+}
+
+function evEnviarPeticion() {
+    const id_alumno = document.getElementById('ev-np-alumno').value;
+    const documento = document.getElementById('ev-np-doc').value.trim();
+    const mensaje   = document.getElementById('ev-np-msg').value.trim();
+    const err = document.getElementById('ev-np-error');
+    err.style.display = 'none';
+    if (!id_alumno) { err.textContent = 'Elegí un alumno.'; err.style.display = 'block'; return; }
+    if (!documento) { err.textContent = 'Escribí qué documento se solicita.'; err.style.display = 'block'; return; }
+
+    const btn = document.getElementById('ev-np-enviar');
+    btn.disabled = true; btn.textContent = 'Enviando...';
+    fetch(`${EV_API}/prece/peticiones`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_alumno: parseInt(id_alumno, 10), documento, mensaje })
+    })
+    .then(r => r.json())
+    .then(d => {
+        if (d.error) throw new Error(d.error);
+        evCerrarModal();
+        evCambiarSubtab('peticiones');
+        evCargar('peticiones', true);   // vuelve al año/mes más reciente, donde queda la nueva
+        kToast('Petición enviada', 'ok');
+    })
+    .catch(e => {
+        err.textContent = e.message || 'Error de conexión.';
+        err.style.display = 'block';
+        btn.disabled = false; btn.textContent = 'Enviar petición';
+    });
 }
 
 // ══════════════════════════════════════════
@@ -482,8 +1114,8 @@ function abrirDocsModal(alumno) {
     // NO agregamos lightbox-abierto al body — ese blur es solo para el lightbox de imagen
 }
 
-function eliminarDocumento(id, btn) {
-    if (!confirm('¿Eliminás este documento? No se puede deshacer.')) return;
+async function eliminarDocumento(id, btn) {
+    if (!(await kConfirm('El documento se borra de la base de datos y no se puede recuperar.', { titulo: '¿Eliminar este documento?' }))) return;
     if (btn) { btn.disabled = true; btn.textContent = '...'; }
     fetch(`http://127.0.0.1:5000/prece/eliminar-documento/${id}`, { method: 'DELETE' })
         .then(r => r.json())
@@ -505,11 +1137,12 @@ function eliminarDocumento(id, btn) {
                 if (_docsAnioActual && btnActivo) cargarDocsCurso(_docsAnioActual, btnActivo);
             } else {
                 if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
-                alert('Error al eliminar: ' + (data.error || 'desconocido'));
+                kToast('No se pudo eliminar: ' + (data.error || 'error desconocido'), 'error');
             }
         })
         .catch(() => {
             if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+            kToast('No se pudo eliminar. Revisá la conexión con el servidor.', 'error');
         });
 }
 
@@ -541,8 +1174,8 @@ function marcarAnotadoPrece(id, btn) {
         });
 }
 
-function eliminarAviso(id, btn) {
-    if (!confirm('¿Eliminás este aviso? No se puede deshacer.')) return;
+async function eliminarAviso(id, btn) {
+    if (!(await kConfirm('El aviso se borra de la base de datos y no se puede recuperar.', { titulo: '¿Eliminar este aviso?' }))) return;
     if (btn) { btn.disabled = true; }
     fetch(`http://127.0.0.1:5000/prece/eliminar-aviso/${id}`, { method: 'DELETE' })
         .then(r => r.json())
@@ -557,35 +1190,12 @@ function eliminarAviso(id, btn) {
                 }
             } else {
                 if (btn) btn.disabled = false;
-                alert('Error: ' + (data.error || 'desconocido'));
+                kToast('Error: ' + (data.error || 'error desconocido'), 'error');
             }
         })
         .catch(() => {
             if (btn) btn.disabled = false;
-        });
-}
-
-function eliminarFoto(id, archivo, btn) {
-    if (!confirm(`¿Eliminás esta foto? Esta acción no se puede deshacer.`)) return;
-    if (btn) { btn.disabled = true; btn.textContent = '...'; }
-    fetch(`http://127.0.0.1:5000/prece/eliminar-foto/${id}`, { method: 'DELETE' })
-        .then(r => r.json())
-        .then(data => {
-            if (data.ok) {
-                const carta = document.getElementById(`ev-carta-${id}`);
-                if (carta) {
-                    carta.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
-                    carta.style.opacity = '0';
-                    carta.style.transform = 'scale(0.9)';
-                    setTimeout(() => carta.remove(), 300);
-                }
-            } else {
-                if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
-                alert('Error al eliminar: ' + (data.error || 'desconocido'));
-            }
-        })
-        .catch(() => {
-            if (btn) { btn.disabled = false; btn.textContent = '🗑 Eliminar'; }
+            kToast('No se pudo eliminar. Revisá la conexión con el servidor.', 'error');
         });
 }
 
@@ -598,7 +1208,7 @@ function cambiarPestania(pestania) {
     });
     if (pestania === 'motivos')       cargarMotivos();
     if (pestania === 'faltas')        iniciarPanelFaltas();
-    if (pestania === 'evidencias')    cargarEvidenciasPrece();
+    if (pestania === 'evidencias')    iniciarPanelEvidencias();
     if (pestania === 'anuncios')    { iniciarPanelAnuncios(); cargarDocumentacion(); }
     if (pestania === 'avisos')        iniciarPanelAvisos();
     if (pestania === 'ingresos')      iniciarPanelIngresos();
@@ -689,12 +1299,12 @@ function agregarFeriado() {
         });
 }
 
-function eliminarFeriado(id) {
-    if (!confirm('¿Eliminar este feriado/excepción? Los días vuelven a contarse como hábiles.')) return;
+async function eliminarFeriado(id) {
+    if (!(await kConfirm('Los días vuelven a contarse como hábiles.', { titulo: '¿Eliminar este feriado o excepción?' }))) return;
     fetch(`http://127.0.0.1:5000/feriados/${id}`, { method: 'DELETE' })
         .then(r => r.json())
         .then(() => cargarFeriados())
-        .catch(() => alert('Error al eliminar.'));
+        .catch(() => kToast('No se pudo eliminar. Revisá la conexión con el servidor.', 'error'));
 }
 
 function verFaltasCurso(anio, btnEl) {
@@ -1046,8 +1656,8 @@ function verAvisosMes(anioMes, btn) {
         });
 }
 
-function eliminarAvisosFecha(fecha, anio, etiquetaFecha, anioMes) {
-    if (!confirm(`¿Eliminás los avisos de ${anio}° Año del ${etiquetaFecha}?\nEsta acción no se puede deshacer.`)) return;
+async function eliminarAvisosFecha(fecha, anio, etiquetaFecha, anioMes) {
+    if (!(await kConfirm(`Se borran todos los avisos de ${anio}° Año del ${etiquetaFecha}. Esta acción no se puede deshacer.`, { titulo: '¿Eliminar los avisos de este día?' }))) return;
 
     fetch(`http://127.0.0.1:5000/prece/avisos/${anio}/fecha/${fecha}`, { method: 'DELETE' })
         .then(r => r.json())
@@ -1057,10 +1667,10 @@ function eliminarAvisosFecha(fecha, anio, etiquetaFecha, anioMes) {
                 const btn = document.querySelector(`#selector-ver-meses .btn-curso-mini.activo`);
                 if (btn) verAvisosMes(anioMes, btn);
             } else {
-                alert('Error: ' + (data.error || 'desconocido'));
+                kToast('Error: ' + (data.error || 'error desconocido'), 'error');
             }
         })
-        .catch(() => alert('Error de conexión.'));
+        .catch(() => kToast('Error de conexión con el servidor.', 'error'));
 }
 
 // ══════════════════════════════════════════
@@ -1180,7 +1790,7 @@ function cargarIngresos(anio) {
                 return;
             }
 
-            const horaEntrada = '07:40';
+            const horaEntrada = '08:00:00';
             const tarde  = ingresos.filter(i => i.hora > horaEntrada);
             const tiempo = ingresos.filter(i => i.hora <= horaEntrada);
 
@@ -1235,6 +1845,9 @@ function iniciarPanelAnuncios() {
     document.getElementById('campo-anuncio-alumno').style.display = 'none';
     document.getElementById('anuncio-alumno-select').innerHTML = '<option value="">— Seleccioná un alumno —</option>';
     document.getElementById('anuncio-mensaje').value = '';
+    document.getElementById('anuncio-documento').value = '';
+    document.getElementById('anuncio-es-peticion').checked = true;
+    toggleAnuncioPeticion();
     document.getElementById('anuncio-form-error').style.display = 'none';
     document.getElementById('anuncio-ok').style.display = 'none';
 }
@@ -1261,50 +1874,63 @@ function seleccionarCursoAnuncio(anio, btn) {
         });
 }
 
+function toggleAnuncioPeticion() {
+    const es = document.getElementById('anuncio-es-peticion').checked;
+    document.getElementById('campo-anuncio-documento').style.display = es ? '' : 'none';
+    document.getElementById('anuncio-mensaje-label').textContent = es ? 'Mensaje (opcional)' : 'Mensaje';
+}
+
 function enviarAnuncio() {
-    const id_alumno = document.getElementById('anuncio-alumno-select').value;
-    const mensaje   = document.getElementById('anuncio-mensaje').value.trim();
-    const errorEl   = document.getElementById('anuncio-form-error');
-    const okEl      = document.getElementById('anuncio-ok');
+    const id_alumno  = document.getElementById('anuncio-alumno-select').value;
+    const mensaje    = document.getElementById('anuncio-mensaje').value.trim();
+    const esPeticion = document.getElementById('anuncio-es-peticion').checked;
+    const documento  = esPeticion ? document.getElementById('anuncio-documento').value.trim() : '';
+    const errorEl    = document.getElementById('anuncio-form-error');
+    const okEl       = document.getElementById('anuncio-ok');
 
     errorEl.style.display = 'none';
     okEl.style.display    = 'none';
+    const fallo = t => { errorEl.textContent = t; errorEl.style.display = 'block'; };
 
-    if (!_cursoAnuncioSeleccionado) {
-        errorEl.textContent = 'Seleccioná un curso.';
-        errorEl.style.display = 'block'; return;
-    }
-    if (!id_alumno) {
-        errorEl.textContent = 'Seleccioná un alumno.';
-        errorEl.style.display = 'block'; return;
-    }
-    if (!mensaje) {
-        errorEl.textContent = 'Escribí el mensaje.';
-        errorEl.style.display = 'block'; return;
-    }
+    if (!_cursoAnuncioSeleccionado) return fallo('Seleccioná un curso.');
+    if (!id_alumno)                 return fallo('Seleccioná un alumno.');
+    if (esPeticion && !documento)   return fallo('Escribí qué documento se solicita.');
+    if (!esPeticion && !mensaje)    return fallo('Escribí el mensaje.');
 
     const btn = document.querySelector('#panel-anuncios .btn-login');
     btn.disabled = true; btn.textContent = 'Enviando...';
 
-    fetch('http://127.0.0.1:5000/prece/anuncios', {
+    // Con documento va por el mismo endpoint que "Nueva petición" de Evidencias:
+    // crea la petición y además el aviso privado al alumno.
+    const url  = esPeticion ? 'http://127.0.0.1:5000/prece/peticiones' : 'http://127.0.0.1:5000/prece/anuncios';
+    const body = esPeticion
+        ? { id_alumno: parseInt(id_alumno), documento, mensaje }
+        : { id_alumno: parseInt(id_alumno), mensaje };
+
+    fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id_alumno: parseInt(id_alumno), mensaje })
+        body: JSON.stringify(body)
     })
     .then(r => r.json())
     .then(data => {
         btn.disabled = false; btn.textContent = 'Enviar anuncio';
-        if (data.error) { errorEl.textContent = data.error; errorEl.style.display = 'block'; return; }
+        if (data.error) return fallo(data.error);
+        okEl.textContent = esPeticion
+            ? '✓ Petición enviada y registrada en Evidencias'
+            : '✓ Anuncio enviado';
         okEl.style.display = 'block';
         document.getElementById('anuncio-mensaje').value = '';
-        setTimeout(() => okEl.style.display = 'none', 3000);
+        document.getElementById('anuncio-documento').value = '';
+        setTimeout(() => okEl.style.display = 'none', 3500);
+        if (esPeticion) evCargar('peticiones', true);
         // Refrescar lista si el mismo curso está seleccionado en "ver"
         const btnVerActivo = document.querySelector('#selector-ver-anuncios .btn-curso-mini.activo');
         if (btnVerActivo) verAnunciosCurso(_cursoAnuncioSeleccionado, btnVerActivo);
     })
     .catch(() => {
         btn.disabled = false; btn.textContent = 'Enviar anuncio';
-        errorEl.textContent = 'Error de conexión.'; errorEl.style.display = 'block';
+        fallo('Error de conexión.');
     });
 }
 
@@ -1342,18 +1968,37 @@ function verAnunciosCurso(anio, btn) {
         });
 }
 
-function eliminarAnuncio(id, btn) {
-    if (!confirm('¿Eliminás este anuncio?')) return;
-    btn.disabled = true;
-    fetch(`http://127.0.0.1:5000/prece/anuncios/${id}`, { method: 'DELETE' })
+async function eliminarAnuncio(id, btn) {
+    if (!(await kConfirm('El anuncio se borra de la base de datos y el alumno deja de verlo.', { titulo: '¿Eliminar este anuncio?' }))) return;
+    if (btn) btn.disabled = true;
+    // La ruta real del backend es /prece/eliminar-anuncio/<id> (/prece/anuncios/<id> solo acepta GET)
+    fetch(`http://127.0.0.1:5000/prece/eliminar-anuncio/${id}`, { method: 'DELETE' })
         .then(r => r.json())
         .then(data => {
             if (data.ok) {
                 const el = document.getElementById(`anuncio-item-${id}`);
-                if (el) { el.style.opacity = '0'; setTimeout(() => el.remove(), 300); }
-            } else { btn.disabled = false; }
+                if (el) {
+                    el.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                    el.style.opacity = '0';
+                    el.style.transform = 'scale(0.95)';
+                    setTimeout(() => {
+                        el.remove();
+                        const cont = document.getElementById('anuncios-lista-contenedor');
+                        if (cont && !cont.querySelector('.anuncio-prece-item')) {
+                            cont.innerHTML = '<p class="instruccion">No hay anuncios en este año.</p>';
+                        }
+                    }, 300);
+                }
+                kToast('Anuncio eliminado', 'ok');
+            } else {
+                if (btn) btn.disabled = false;
+                kToast('No se pudo eliminar: ' + (data.error || 'error desconocido'), 'error');
+            }
         })
-        .catch(() => { btn.disabled = false; });
+        .catch(() => {
+            if (btn) btn.disabled = false;
+            kToast('No se pudo eliminar. Revisá la conexión con el servidor.', 'error');
+        });
 }
 
 
@@ -1520,10 +2165,10 @@ function eliminarAnuncio(id, btn) {
               texto: 'Los motivos que cargaron los alumnos. Elegí un curso y desplegá a cada uno para ver el detalle.',
               objetivo: '#motivos-contenedor' },
             { titulo: 'Evidencias', tab: 'evidencias', extras: true, maxAlto: 200,
-              texto: 'Las fotos de clase de cada curso. Tocá una para verla en grande, con su descripción y fecha.',
+              texto: 'El historial de lo que enviaste: los avisos de ingreso tarde (uno por curso) y las peticiones de documentación a cada alumno, con su estado. Tocá el ojo para ver el detalle.',
               objetivo: '#evidencias-prece-contenedor' },
             { titulo: 'Ingresos', tab: 'ingresos', extras: true,
-              texto: 'Elegí curso y fecha para ver quién ingresó (con su código KRONO) y a qué hora. Después de las 7:40 figura como tarde.',
+              texto: 'Elegí curso y fecha para ver quién ingresó (con su código KRONO) y a qué hora. Después de las 8:00 figura como tarde.',
               objetivo: '#panel-ingresos .ingresos-filtros' },
 
             { titulo: '¡Eso es todo!',

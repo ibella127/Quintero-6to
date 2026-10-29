@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Preceptoría</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="prece-style.css?v=4">
+    <link rel="stylesheet" href="prece-style.css?v=10">
     <style>
         /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
            cruzan según el modo — evita que se vean las dos pisadas juntas */
@@ -118,7 +118,7 @@
                         <div id="tabs-extra" class="tabs-extra">
                             <button id="tab-alumnos"    class="tab-btn" onclick="cambiarPestania('alumnos')">👥 Alumnos</button>
                             <button id="tab-motivos"    class="tab-btn" onclick="cambiarPestania('motivos')">📋 Motivos</button>
-                            <button id="tab-evidencias" class="tab-btn" onclick="cambiarPestania('evidencias')">📸 Evidencias</button>
+                            <button id="tab-evidencias" class="tab-btn" onclick="cambiarPestania('evidencias')">📋 Evidencias</button>
                             <button id="tab-ingresos"   class="tab-btn" onclick="cambiarPestania('ingresos')">🚪 Ingresos</button>
                         </div>
                     </div>
@@ -273,8 +273,58 @@
 
                     <!-- Panel Evidencias -->
                     <div id="panel-evidencias" style="display:none;">
-                        <div id="evidencias-prece-contenedor" class="display-area" style="flex-direction:column; align-items:stretch; min-height:200px;">
-                            <p class="instruccion">Cargando...</p>
+                        <div id="evidencias-prece-contenedor" class="ev-wrap">
+
+                            <div class="ev-head">
+                                <div>
+                                    <h2 class="ev-titulo">Evidencias</h2>
+                                    <p class="ev-subtitulo">Historial de avisos y peticiones enviados por el preceptor.</p>
+                                </div>
+                            </div>
+
+                            <div class="ev-subtabs">
+                                <button type="button" id="ev-subtab-avisos" class="ev-subtab activo" onclick="evCambiarSubtab('avisos')">Avisos de ingreso tarde</button>
+                                <button type="button" id="ev-subtab-peticiones" class="ev-subtab" onclick="evCambiarSubtab('peticiones')">Peticiones de documentación</button>
+                            </div>
+
+                            <!-- Historial de avisos de ingreso tarde -->
+                            <section id="ev-sec-avisos" class="ev-card ev-card-plano">
+                                <div class="ev-card-head">
+                                    <div class="ev-card-info">
+                                        <h3 class="ev-card-titulo">Historial de avisos de ingreso tarde</h3>
+                                        <p class="ev-card-sub">Cada registro corresponde a un aviso enviado a todo el curso/año.</p>
+                                    </div>
+                                    <div class="ev-filtros">
+                                        <button type="button" class="ev-btn-actualizar" onclick="evCargar('avisos')" title="Actualizar resultados">🔄 Actualizar</button>
+                                    </div>
+                                </div>
+                                <div id="ev-tabla-avisos" class="ev-tabla-wrap"><p class="instruccion">Cargando...</p></div>
+                            </section>
+
+                            <!-- Historial de peticiones de documentación -->
+                            <section id="ev-sec-peticiones" class="ev-card ev-card-plano" style="display:none;">
+                                <div class="ev-card-head">
+                                    <div class="ev-card-info">
+                                        <h3 class="ev-card-titulo">Historial de peticiones de documentación</h3>
+                                        <p class="ev-card-sub">Cada registro corresponde a una petición a un alumno específico.</p>
+                                    </div>
+                                    <div class="ev-filtros">
+                                        <button type="button" class="ev-btn-actualizar" onclick="evCargar('peticiones')" title="Actualizar resultados">🔄 Actualizar</button>
+                                        <button type="button" class="ev-btn-nuevo" onclick="evNuevaPeticion()">＋ Nueva petición</button>
+                                    </div>
+                                </div>
+                                <div id="ev-tabla-peticiones" class="ev-tabla-wrap"><p class="instruccion">Cargando...</p></div>
+                            </section>
+
+                        </div>
+                    </div>
+
+                    <!-- Modal de detalle / nueva petición (Evidencias) -->
+                    <div id="ev-modal-overlay" class="ev-modal-overlay" style="display:none;">
+                        <div class="ev-modal-backdrop" onclick="evCerrarModal()"></div>
+                        <div class="ev-modal-box" role="dialog" aria-modal="true">
+                            <button type="button" class="ev-modal-cerrar" onclick="evCerrarModal()" aria-label="Cerrar">✕</button>
+                            <div id="ev-modal-contenido"></div>
                         </div>
                     </div>
 
@@ -315,7 +365,17 @@
                                     </select>
                                 </div>
                                 <div class="aviso-campo">
-                                    <label class="aviso-label">Mensaje</label>
+                                    <label class="aviso-check">
+                                        <input type="checkbox" id="anuncio-es-peticion" checked onchange="toggleAnuncioPeticion()">
+                                        <span>📄 Pedir un documento (queda registrado en Evidencias)</span>
+                                    </label>
+                                </div>
+                                <div class="aviso-campo" id="campo-anuncio-documento">
+                                    <label class="aviso-label">Documento que se solicita</label>
+                                    <input type="text" id="anuncio-documento" class="aviso-input" maxlength="300" placeholder="Ej: DNI (ambos lados, en un PDF)">
+                                </div>
+                                <div class="aviso-campo">
+                                    <label class="aviso-label" id="anuncio-mensaje-label">Mensaje (opcional)</label>
                                     <textarea id="anuncio-mensaje" class="aviso-textarea" placeholder="Escribí el anuncio para el alumno..."></textarea>
                                 </div>
                                 <p id="anuncio-form-error" class="login-error" style="display:none;"></p>
@@ -399,6 +459,6 @@
         </main>
     </div>
 
-    <script src="prece-script.js?v=4"></script>
+    <script src="prece-script.js?v=11"></script>
 </body>
 </html>

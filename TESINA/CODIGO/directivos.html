@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Directivos</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="directivos-style.css?v=3">
+    <link rel="stylesheet" href="directivos-style.css?v=21">
     <style>
         /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
            cruzan según el modo — evita que se vean las dos pisadas juntas */
@@ -115,184 +115,359 @@
                     <!-- Pestañas -->
                     <div class="tabs-dir">
                         <button id="tab-estadisticas" class="tab-btn tab-activa" onclick="cambiarPestania('estadisticas')">📊 Estadísticas</button>
-                        <button id="tab-faltas"       class="tab-btn"            onclick="cambiarPestania('faltas')">📋 Faltas por alumno</button>
-                        <button id="tab-tardanzas"    class="tab-btn"            onclick="cambiarPestania('tardanzas')">🕐 Tardanzas</button>
-                        <button id="tab-tendencias"   class="tab-btn"            onclick="cambiarPestania('tendencias')">📈 Tendencias tardanzas</button>
-                        <button id="tab-tendencias-faltas" class="tab-btn"       onclick="cambiarPestania('tendencias-faltas')">📉 Tendencias faltas</button>
+                        <button id="tab-motivos"      class="tab-btn"            onclick="cambiarPestania('motivos')">📋 Profesores</button>
+                        <button id="tab-estudiantes"  class="tab-btn"            onclick="cambiarPestania('estudiantes')">📓 Estudiantes</button>
                     </div>
 
-                    <!-- ══ PANEL ESTADÍSTICAS ══ -->
-                    <div id="panel-estadisticas">
-                        <div class="selector-cursos-grid">
-                            <button class="btn-curso activo" onclick="seleccionarCurso(0,this)">Todos</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(1,this)">1° Año</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(2,this)">2° Año</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(3,this)">3° Año</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(4,this)">4° Año</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(5,this)">5° Año</button>
-                            <button class="btn-curso" onclick="seleccionarCurso(6,this)">6° Año</button>
-                        </div>
+                    <!-- ══ PANEL ESTADÍSTICAS (rendimiento académico) ══ -->
+                    <div id="panel-estadisticas" class="ea">
 
-                        <div class="stats-cards-row">
-                            <div class="stat-card">
-                                <span class="stat-icon">👥</span>
-                                <div class="stat-num" id="stat-total">—</div>
-                                <div class="stat-label">Total alumnos</div>
-                            </div>
-                            <div class="stat-card stat-card-blue">
-                                <span class="stat-icon">✅</span>
-                                <div class="stat-num" id="stat-presentes">—</div>
-                                <div class="stat-label">Presentes hoy</div>
-                            </div>
-                            <div class="stat-card stat-card-red">
-                                <span class="stat-icon">❌</span>
-                                <div class="stat-num" id="stat-ausentes">—</div>
-                                <div class="stat-label">Ausentes hoy</div>
-                            </div>
-                            <div class="stat-card stat-card-amber">
-                                <span class="stat-icon">⏰</span>
-                                <div class="stat-num" id="stat-tardes">—</div>
-                                <div class="stat-label">Llegadas tarde hoy</div>
+                        <div class="ea-head">
+                            <span class="ea-head-ico" aria-hidden="true">📊</span>
+                            <div class="ea-head-txt">
+                                <h2 class="ea-titulo">Estadísticas</h2>
+                                <p class="ea-sub">Visualizá el rendimiento académico del colegio en un solo lugar.</p>
                             </div>
                         </div>
 
-                        <div class="display-area" style="margin-top:1.5rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Motivos más frecuentes de tardanza</h3>
-                                <span class="seccion-sub" id="motivos-curso-label">Todos los cursos</span>
+                        <!-- Filtros compactos -->
+                        <div class="ea-filtros" role="group" aria-label="Filtros de estadísticas">
+                            <label class="ea-filtro">
+                                <span class="ea-filtro-label">Año lectivo</span>
+                                <select id="ea-f-anio" class="ea-select" onchange="cargarEstadisticas()">
+                                    <option value="">Cargando…</option>
+                                </select>
+                            </label>
+                            <label class="ea-filtro">
+                                <span class="ea-filtro-label">Curso</span>
+                                <select id="ea-f-curso" class="ea-select" onchange="cargarEstadisticas()">
+                                    <option value="">Todos</option>
+                                    <option value="1">1° año</option>
+                                    <option value="2">2° año</option>
+                                    <option value="3">3° año</option>
+                                    <option value="4">4° año</option>
+                                    <option value="5">5° año</option>
+                                    <option value="6">6° año</option>
+                                </select>
+                            </label>
+                            <label class="ea-filtro">
+                                <span class="ea-filtro-label">Materia</span>
+                                <select id="ea-f-materia" class="ea-select" onchange="cargarEstadisticas()">
+                                    <option value="">Todas</option>
+                                </select>
+                            </label>
+                            <label class="ea-filtro">
+                                <span class="ea-filtro-label">Período</span>
+                                <select id="ea-f-trimestre" class="ea-select" onchange="cargarEstadisticas()">
+                                    <option value="">Todos</option>
+                                    <option value="1">1° trimestre</option>
+                                    <option value="2">2° trimestre</option>
+                                    <option value="3">3° trimestre</option>
+                                    <option value="4">4° trimestre</option>
+                                </select>
+                            </label>
+                        </div>
+
+                        <!-- Indicadores generales -->
+                        <div class="ea-kpis">
+                            <div class="ea-kpi">
+                                <span class="ea-kpi-ico" aria-hidden="true">👥</span>
+                                <div class="ea-kpi-body">
+                                    <span class="ea-kpi-label">Alumnos registrados</span>
+                                    <span class="ea-kpi-num" id="ea-k-alumnos">—</span>
+                                    <span class="ea-kpi-nota" id="ea-k-alumnos-nota">&nbsp;</span>
+                                </div>
                             </div>
-                            <div id="motivos-frecuentes" class="motivos-lista">
-                                <p class="instruccion">Cargando datos...</p>
+                            <div class="ea-kpi ea-kpi-ok">
+                                <span class="ea-kpi-ico" aria-hidden="true">✅</span>
+                                <div class="ea-kpi-body">
+                                    <span class="ea-kpi-label">Materias aprobadas</span>
+                                    <span class="ea-kpi-num" id="ea-k-aprobadas">—</span>
+                                    <span class="ea-kpi-nota">notas de 7 o más</span>
+                                </div>
+                            </div>
+                            <div class="ea-kpi ea-kpi-mal">
+                                <span class="ea-kpi-ico" aria-hidden="true">❌</span>
+                                <div class="ea-kpi-body">
+                                    <span class="ea-kpi-label">Materias desaprobadas</span>
+                                    <span class="ea-kpi-num" id="ea-k-desaprobadas">—</span>
+                                    <span class="ea-kpi-nota">notas menores a 7</span>
+                                </div>
+                            </div>
+                            <div class="ea-kpi">
+                                <span class="ea-kpi-ico" aria-hidden="true">📝</span>
+                                <div class="ea-kpi-body">
+                                    <span class="ea-kpi-label">Notas cargadas</span>
+                                    <span class="ea-kpi-num" id="ea-k-notas">—</span>
+                                    <span class="ea-kpi-nota">por los profesores</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div class="display-area" style="margin-top:1.2rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Motivos más frecuentes de ausencia</h3>
-                                <span class="seccion-sub" id="faltas-curso-label">Todos los cursos</span>
-                            </div>
-                            <div id="faltas-frecuentes" class="motivos-lista">
-                                <p class="instruccion">Cargando datos...</p>
-                            </div>
+                        <!-- Fila 1: gráfico principal + secundario -->
+                        <div class="ea-grid ea-grid-top">
+                            <section class="ea-card ea-card-main" aria-labelledby="ea-t-evol">
+                                <div class="ea-card-head">
+                                    <h3 class="ea-card-titulo" id="ea-t-evol">Evolución académica</h3>
+                                    <div class="ea-leyenda" aria-hidden="true">
+                                        <span><i class="ea-dot ea-dot-1"></i>Aprobados</span>
+                                        <span><i class="ea-dot ea-dot-2"></i>Con recuperatorio</span>
+                                        <span><i class="ea-dot ea-dot-3"></i>Desaprobados</span>
+                                    </div>
+                                </div>
+                                <div class="ea-chart ea-chart-main"><canvas id="chart-ea-evolucion" aria-label="Evolución de aprobados y desaprobados por trimestre" role="img"></canvas></div>
+                                <p class="ea-vacio" id="ea-v-evolucion" hidden>Todavía no hay notas cargadas para mostrar la evolución.</p>
+                            </section>
+
+                            <section class="ea-card" aria-labelledby="ea-t-dist">
+                                <div class="ea-card-head">
+                                    <h3 class="ea-card-titulo" id="ea-t-dist">Distribución de calificaciones</h3>
+                                </div>
+                                <div class="ea-donut-body" id="ea-donut-body">
+                                    <div class="ea-donut-wrap">
+                                        <canvas id="chart-ea-dona" aria-label="Distribución de calificaciones" role="img"></canvas>
+                                        <div class="ea-donut-centro">
+                                            <span class="ea-donut-num" id="ea-dona-total">—</span>
+                                            <span class="ea-donut-sub">notas</span>
+                                        </div>
+                                    </div>
+                                    <div class="ea-donut-leyenda" id="ea-dona-leyenda"></div>
+                                </div>
+                                <p class="ea-vacio" id="ea-v-dona" hidden>Todavía no hay notas cargadas para mostrar la distribución.</p>
+                            </section>
                         </div>
+
+                        <!-- Fila 2 -->
+                        <div class="ea-grid ea-grid-bottom">
+                            <section class="ea-card" aria-labelledby="ea-t-mat">
+                                <div class="ea-card-head">
+                                    <h3 class="ea-card-titulo" id="ea-t-mat">Rendimiento por materia</h3>
+                                    <select id="ea-metrica-materias" class="ea-select ea-select-mini" onchange="_eaRenderMaterias()" aria-label="Métrica por materia">
+                                        <option value="promedio">Promedio</option>
+                                        <option value="aprobacion">% de aprobación</option>
+                                    </select>
+                                </div>
+                                <div class="ea-scroll" id="ea-scroll-mat">
+                                    <div class="ea-chart" id="ea-wrap-mat"><canvas id="chart-ea-materias" aria-label="Rendimiento por materia" role="img"></canvas></div>
+                                </div>
+                                <p class="ea-vacio" id="ea-v-materias" hidden>No hay notas cargadas por materia con estos filtros.</p>
+                            </section>
+
+                            <section class="ea-card" aria-labelledby="ea-t-cur">
+                                <div class="ea-card-head">
+                                    <h3 class="ea-card-titulo" id="ea-t-cur">Comparación entre cursos</h3>
+                                    <div class="ea-leyenda" aria-hidden="true">
+                                        <span><i class="ea-dot ea-dot-1"></i>Aprobados</span>
+                                        <span><i class="ea-dot ea-dot-3"></i>Desaprobados</span>
+                                    </div>
+                                </div>
+                                <div class="ea-chart"><canvas id="chart-ea-cursos" aria-label="Comparación de aprobados y desaprobados entre cursos" role="img"></canvas></div>
+                                <p class="ea-vacio" id="ea-v-cursos" hidden>No hay notas cargadas para comparar cursos con estos filtros.</p>
+                            </section>
+                        </div>
+
+                        <p class="ea-error" id="ea-error" role="alert" hidden>No se pudieron cargar las estadísticas. Revisá que el servidor esté en funcionamiento.</p>
                     </div>
 
-                    <!-- ══ PANEL FALTAS POR ALUMNO ══ -->
-                    <div id="panel-faltas" style="display:none;">
-                        <div class="display-area" style="margin-bottom:1.2rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Ausencias por alumno</h3>
-                                <span class="seccion-sub" id="faltas-chart-label">—</span>
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="chart-faltas"></canvas>
+                    <!-- ══ PANEL MOTIVOS DE NOTAS BAJAS ══ -->
+                    <div id="panel-motivos" style="display:none;">
+
+                        <!-- Fila superior: tarjeta Profesores + Evolución de los motivos -->
+                        <div id="prof-cuadros" class="prof-cuadros prof-cuadros-fila">
+                            <button type="button" class="prof-cuadro" onclick="abrirListaProfes()">
+                                <span class="prof-cuadro-ico">📝</span>
+                                <span class="prof-cuadro-txt">
+                                    <span class="prof-cuadro-titulo">Profesores</span>
+                                    <span class="prof-cuadro-cant" id="prof-cant-profesores">—</span>
+                                    <span class="prof-cuadro-desc">
+                                        Directivo, aquí encontraras una lista de los profesores 
+                                        para actualizar su estado o elimniarlo en caso de que ya no se 
+                                        encuentre en la institución, además de cambiar en dicho caso su materia y curso.
+                                    </span>
+                                </span>
+                            </button>
+
+                            <div class="display-area">
+                                <div class="seccion-titulo-wrap"><h3 class="seccion-titulo">Evolución de los motivos</h3></div>
+                                <div class="mot-evol-leyenda">
+                                    <span><i class="mot-dot mot-g1"></i>Falta de estudio</span>
+                                    <span><i class="mot-dot mot-g2"></i>Comprensión</span>
+                                    <span><i class="mot-dot mot-g3"></i>Inasistencias</span>
+                                    <span><i class="mot-dot mot-g4"></i>Otros</span>
+                                </div>
+                                <div class="mot-evol" id="mot-evolucion"></div>
                             </div>
                         </div>
+
+                        <!-- Lista de profes (se abre al entrar a una tarjeta) -->
+                        <div id="prof-lista-vista" style="display:none;">
+                            <div class="display-area">
+                                <div class="prof-lista-head">
+                                    <button type="button" class="btn-curso-mini prof-volver" onclick="cerrarListaProfes()">← Volver</button>
+                                    <h3 class="seccion-titulo" id="prof-lista-titulo">Profesores</h3>
+                                    <span class="seccion-sub" id="prof-lista-cant"></span>
+                                </div>
+                                <div class="dir-tabla" id="prof-tabla"></div>
+                            </div>
+                        </div>
+
+                        <!-- Resumen de motivos de notas bajas -->
+                        <div id="mot-dashboard">
                         <div class="filtros-row">
-                            <div class="selector-cursos-mini" id="selector-faltas-curso">
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(1,this)">1° Año</button>
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(2,this)">2° Año</button>
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(3,this)">3° Año</button>
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(4,this)">4° Año</button>
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(5,this)">5° Año</button>
-                                <button class="btn-curso-mini" onclick="verFaltasCurso(6,this)">6° Año</button>
-                            </div>
-                            <div class="filtros-extras">
-                                <input type="text" id="buscar-alumno" placeholder="Buscar alumno..."
-                                       class="input-buscar" oninput="filtrarAlumnos()">
-                                <select id="orden-faltas" class="aviso-select" onchange="filtrarAlumnos()">
-                                    <option value="mas">Mayor cantidad de faltas</option>
-                                    <option value="menos">Menor cantidad de faltas</option>
-                                    <option value="alfa">Alfabético</option>
+                            <div>
+                                <label class="mot-filtro-label" for="mot-filtro-prof">Profesor</label>
+                                <select id="mot-filtro-prof" class="aviso-select" onchange="cargarMotivosNotas()">
+                                    <option value="">Todos los profesores</option>
                                 </select>
                             </div>
                         </div>
-                        <div id="faltas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
-                            <p class="instruccion">Seleccioná un curso para ver las faltas</p>
+
+                        <div class="mot-row mot-row-top">
+                            <div class="display-area">
+                                <div class="seccion-titulo-wrap"><h3 class="seccion-titulo">Motivos de notas bajas</h3></div>
+                                <div class="mot-donut-body">
+                                    <div class="mot-donut-wrap">
+                                        <canvas id="chart-motivos-donut"></canvas>
+                                        <div class="mot-donut-centro">
+                                            <span class="mot-donut-num" id="mot-total">—</span>
+                                            <span class="mot-donut-sub">notas bajas</span>
+                                        </div>
+                                    </div>
+                                    <div class="mot-leyenda" id="mot-leyenda"></div>
+                                </div>
+                                <p class="mot-pie" id="mot-pie"></p>
+                            </div>
+
+                            <div class="display-area">
+                                <div class="seccion-titulo-wrap"><h3 class="seccion-titulo">Observaciones</h3></div>
+                                <ul class="mot-obs-lista" id="mot-observaciones"></ul>
+                                <div class="mot-fuente">Estos datos se obtienen del registro de los profesores en el sistema de calificaciones.</div>
+                            </div>
                         </div>
+
+                        <div class="mot-row mot-row-bottom">
+                            <div class="display-area">
+                                <div class="seccion-titulo-wrap"><h3 class="seccion-titulo">Motivos por materia</h3></div>
+                                <div class="mot-tabla-wrap" id="mot-tabla"></div>
+                            </div>
+                        </div>
+
+                        <!-- Notas altas (7 o más) del profesor elegido en el filtro -->
+                        <div class="display-area" id="mot-notas-prof" style="display:none;">
+                            <div class="seccion-titulo-wrap">
+                                <h3 class="seccion-titulo">Notas de 7 o más</h3>
+                                <span class="seccion-sub" id="mot-notas-prof-cant"></span>
+                            </div>
+                            <div class="tend-stats-row" id="mot-notas-prof-stats"></div>
+                            <div class="notas-altas-grupos" id="mot-notas-prof-grupos"></div>
+                            <p class="mot-pie" id="mot-notas-prof-pie"></p>
+                        </div>
+                        </div><!-- /mot-dashboard -->
                     </div>
 
-                    <!-- ══ PANEL TARDANZAS ══ -->
-                    <div id="panel-tardanzas" style="display:none;">
-                        <div class="display-area" style="margin-bottom:1.2rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Tardanzas por alumno</h3>
-                                <span class="seccion-sub" id="tardanzas-chart-label">—</span>
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="chart-tardanzas"></canvas>
-                            </div>
-                        </div>
-                        <div class="filtros-row">
-                            <div class="selector-cursos-mini" id="selector-tardanzas-curso">
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(1,this)">1° Año</button>
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(2,this)">2° Año</button>
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(3,this)">3° Año</button>
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(4,this)">4° Año</button>
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(5,this)">5° Año</button>
-                                <button class="btn-curso-mini" onclick="verTardanzasCurso(6,this)">6° Año</button>
-                            </div>
-                            <div class="filtros-extras">
-                                <input type="text" id="buscar-alumno-tard" placeholder="Buscar alumno..."
-                                       class="input-buscar" oninput="filtrarTardanzas()">
-                                <select id="orden-tardanzas" class="aviso-select" onchange="filtrarTardanzas()">
-                                    <option value="mas">Mayor cantidad de tardanzas</option>
-                                    <option value="menos">Menor cantidad de tardanzas</option>
-                                    <option value="alfa">Alfabético</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div id="tardanzas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
-                            <p class="instruccion">Seleccioná un curso para ver las tardanzas</p>
-                        </div>
-                    </div>
+                    <!-- ══ PANEL ESTUDIANTES ══ -->
+                    <div id="panel-estudiantes" style="display:none;">
 
-                    <!-- ══ PANEL TENDENCIAS ══ -->
-                    <div id="panel-tendencias" style="display:none;">
-                        <div class="filtros-row">
-                            <div class="selector-cursos-mini" id="selector-tend-curso">
-                                <button class="btn-curso-mini" onclick="verTendencias(1,this)">1° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendencias(2,this)">2° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendencias(3,this)">3° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendencias(4,this)">4° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendencias(5,this)">5° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendencias(6,this)">6° Año</button>
-                            </div>
-                        </div>
-                        <div id="tendencias-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Tardanzas por mes</h3>
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="chart-tendencias"></canvas>
-                            </div>
-                            <div id="tendencias-detalle" style="width:100%; margin-top:1.4rem;">
-                                <p class="instruccion">Seleccioná un curso para ver las tendencias mensuales</p>
-                            </div>
-                        </div>
-                    </div>
+                        <!-- Tarjeta: Estudiantes -->
+                        <div id="est-cuadros" class="prof-cuadros prof-cuadros-dos">
+                            <button type="button" class="prof-cuadro prof-cuadro-est" onclick="abrirEstudiantes()">
+                                <span class="prof-cuadro-ico">📓</span>
+                                <span class="prof-cuadro-txt">
+                                    <span class="prof-cuadro-titulo">Estudiantes</span>
+                                    <span class="prof-cuadro-cant" id="est-cant-total">—</span>
+                                    <span class="prof-cuadro-desc">
+                                        Directivo, aquí podrás eliminar por completo a sexto año,
+                                        dar de baja a estudiantes que ya no se encuentren en la institución,
+                                        agregar estudiantes que ingresen y agregar a los ingresantes de primer año.
+                                    </span>
+                                </span>
+                            </button>
 
-                    <!-- ══ PANEL TENDENCIAS FALTAS ══ -->
-                    <div id="panel-tendencias-faltas" style="display:none;">
-                        <div class="filtros-row">
-                            <div class="selector-cursos-mini" id="selector-tend-faltas-curso">
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(1,this)">1° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(2,this)">2° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(3,this)">3° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(4,this)">4° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(5,this)">5° Año</button>
-                                <button class="btn-curso-mini" onclick="verTendenciasFaltas(6,this)">6° Año</button>
-                            </div>
+                            <!-- Tarjeta verde: Descargar libretas -->
+                            <section class="lib-card" aria-labelledby="lib-titulo">
+                                <div class="lib-card-head">
+                                    <span class="prof-cuadro-ico" aria-hidden="true">⬇</span>
+                                    <div class="lib-card-txt">
+                                        <h3 class="lib-card-titulo" id="lib-titulo">Descargar libretas</h3>
+                                        <p class="lib-card-desc">
+                                            Elegí el año y el estudiante para descargar su libreta en PDF,
+                                            con las notas, inasistencias y aprendizajes pendientes.
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="lib-campos">
+                                    <label class="lib-campo">
+                                        <span class="lib-label">Año</span>
+                                        <select id="lib-anio" class="lib-select" onchange="libCargarAlumnos()">
+                                            <option value="">Elegí un año</option>
+                                            <option value="1">1° año</option>
+                                            <option value="2">2° año</option>
+                                            <option value="3">3° año</option>
+                                            <option value="4">4° año</option>
+                                            <option value="5">5° año</option>
+                                            <option value="6">6° año</option>
+                                        </select>
+                                    </label>
+                                    <label class="lib-campo">
+                                        <span class="lib-label">Estudiante</span>
+                                        <select id="lib-alumno" class="lib-select" onchange="libActualizarBoton()" disabled>
+                                            <option value="">Primero elegí el año</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <button type="button" class="lib-btn" id="lib-btn" onclick="descargarLibreta()" disabled>
+                                    <span aria-hidden="true">⬇</span> Descargar libreta
+                                </button>
+                                <p class="lib-msg" id="lib-msg" role="status"></p>
+                            </section>
                         </div>
-                        <div id="tendencias-faltas-contenedor" class="display-area" style="min-height:200px; margin-top:1rem;">
-                            <div class="seccion-titulo-wrap">
-                                <h3 class="seccion-titulo">Ausencias por mes</h3>
-                            </div>
-                            <div class="chart-wrap">
-                                <canvas id="chart-tendencias-faltas"></canvas>
-                            </div>
-                            <div id="tendencias-faltas-detalle" style="width:100%; margin-top:1.4rem;">
-                                <p class="instruccion">Seleccioná un curso para ver las tendencias de faltas</p>
+
+                        <!-- Gestión de estudiantes (se abre al entrar a la tarjeta Estudiantes) -->
+                        <div id="est-vista" style="display:none;">
+                            <div class="display-area">
+                                <div class="prof-lista-head">
+                                    <button type="button" class="btn-curso-mini prof-volver" onclick="cerrarEstudiantes()">← Volver</button>
+                                    <h3 class="seccion-titulo">Estudiantes</h3>
+                                    <span class="seccion-sub" id="est-vista-cant"></span>
+                                </div>
+
+                                <div class="est-acciones">
+                                    <button type="button" class="est-accion" onclick="abrirAgregarEstudiante()">
+                                        <span class="est-accion-titulo">Agregar estudiante</span>
+                                        <span class="est-accion-sub">Un estudiante que ingresa a cualquier año</span>
+                                    </button>
+                                    <button type="button" class="est-accion" onclick="abrirIngresantes()">
+                                        <span class="est-accion-titulo">Ingresantes de 1° año</span>
+                                        <span class="est-accion-sub">Cargar varios a la vez</span>
+                                    </button>
+                                    <button type="button" class="est-accion" onclick="abrirCambiarAnio()">
+                                        <span class="est-accion-titulo">Cambiar de año</span>
+                                        <span class="est-accion-sub">Para quienes repiten o cambian de curso</span>
+                                    </button>
+                                    <button type="button" class="est-accion est-accion-peligro" onclick="abrirEliminarSexto()">
+                                        <span class="est-accion-titulo">Eliminar 6° año</span>
+                                        <span class="est-accion-sub" id="est-sexto-cant">Se borra el curso completo</span>
+                                    </button>
+                                </div>
+
+                                <h3 class="seccion-titulo est-subtitulo">Dar de baja estudiantes</h3>
+                                <div class="filtros-row">
+                                    <div class="selector-cursos-mini" id="est-selector-curso">
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(1,this)">1° Año</button>
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(2,this)">2° Año</button>
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(3,this)">3° Año</button>
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(4,this)">4° Año</button>
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(5,this)">5° Año</button>
+                                        <button class="btn-curso-mini" onclick="verEstudiantesCurso(6,this)">6° Año</button>
+                                    </div>
+                                    <div class="filtros-extras">
+                                        <input type="text" id="est-buscar" placeholder="Buscar estudiante..."
+                                               class="input-buscar" oninput="renderListaEstudiantes()">
+                                    </div>
+                                </div>
+                                <div class="dir-tabla" id="est-tabla">
+                                    <p class="instruccion">Seleccioná un curso para ver sus estudiantes</p>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -302,6 +477,19 @@
         </main>
     </div>
 
-    <script src="directivos-script.js?v=3"></script>
+    <!-- Modal de profes: Actualizar / Eliminar -->
+    <div id="prof-modal" class="prof-modal" style="display:none;" onclick="if (event.target === this) cerrarModalProf()">
+        <div class="prof-modal-card" role="dialog" aria-modal="true" aria-labelledby="prof-modal-titulo">
+            <h3 class="seccion-titulo" id="prof-modal-titulo"></h3>
+            <div id="prof-modal-cuerpo"></div>
+            <p class="prof-modal-error" id="prof-modal-error" role="alert"></p>
+            <div class="prof-modal-acciones">
+                <button type="button" class="btn-curso-mini" onclick="cerrarModalProf()">Cancelar</button>
+                <button type="button" class="btn-curso-mini activo" id="prof-modal-ok">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="directivos-script.js?v=21"></script>
 </body>
 </html>

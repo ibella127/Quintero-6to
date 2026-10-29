@@ -96,7 +96,9 @@ let DATOS_ALUMNO = {
     anio: null,
     faltasJustificadas:   [0,0,0,0,0,0,0,0,0,0],
     faltasInjustificadas: [0,0,0,0,0,0,0,0,0,0],
-    clasesSubidas: 0
+    clasesSubidas: 0,
+    promedio: null,        // promedio de notas cargadas por profesores (1-10), null si no hay
+    notasDetalle: []       // [{materia, trimestre, nota, r1, r2, cuenta}]
 };
  
 // email temporal entre paso 1 y paso 2
@@ -219,6 +221,7 @@ function verificarOTP() {
         sessionStorage.setItem('alumno_id',       alumno.id_alumno || '');
  
         mostrarPanel(alumno.nombre, alumno.apellido, alumno.anio);
+        if (window.kronoTutorial) window.kronoTutorial.alIngresar();
     })
     .catch(() => {
         btn.textContent = 'Verificar';
@@ -358,6 +361,16 @@ function cargarFaltasYTardanzas() {
         })
         .catch(() => {});
 
+    // Notas cargadas por los profesores → promedio (el backend calcula con la misma regla que se muestra)
+    const promNotas = fetch(`http://127.0.0.1:5000/mis-notas/${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) return;
+            DATOS_ALUMNO.promedio     = data.promedio;
+            DATOS_ALUMNO.notasDetalle = data.detalle || [];
+        })
+        .catch(() => {});
+
     const promTardanzas = fetch(`http://127.0.0.1:5000/mis-tardanzas/${encodeURIComponent(email)}`)
         .then(r => r.json())
         .then(data => {
@@ -367,8 +380,8 @@ function cargarFaltasYTardanzas() {
         })
         .catch(() => {});
 
-    // Esperar faltas + fotos antes de redibujar toda la UI
-    Promise.all([promFaltas, promFotos]).then(() => {
+    // Esperar faltas + fotos + notas antes de redibujar toda la UI
+    Promise.all([promFaltas, promFotos, promNotas]).then(() => {
         iniciarEstadisticas();
     });
 
@@ -588,8 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const inp = document.getElementById('email-input');
     if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarLogin(); });
 
-    const tarjInp = document.getElementById('tarjeta-input');
-    if (tarjInp) tarjInp.addEventListener('keydown', e => { if (e.key === 'Enter') verificarTarjeta(); });
  
     // Restaurar sesión si ya estaba logueado
     const emailGuardado   = sessionStorage.getItem('alumno_email');
@@ -660,18 +671,39 @@ function iniciarEstadisticas() {
     document.getElementById('stat-just').textContent   = totalJust;
     document.getElementById('stat-fotos').textContent  = fotos;
  
-    // % beneficio: base 100, -10 por injust, +2 por foto
-    const pct = Math.min(100, Math.max(0, 100 - totalInjust * 10 + fotos * 2));
+    // Promedio académico (1-10) de las notas cargadas por profesores; null si todavía no hay notas
+    const fmt = n => (Math.round(n * 100) / 100).toString().replace('.', ',');
+    const hayNotas = d.promedio !== null && d.promedio !== undefined;
+    const pct = hayNotas ? d.promedio : null;   // (nombre histórico) = promedio
     window._kronoPCT = pct; // ← global para la tarjeta
-    document.getElementById('pct-numero').textContent = pct + '%';
- 
-    // Barras de factores
-    const maxInjust = 10, maxFotos = 20;
-    document.getElementById('barra-injust').style.width = Math.min(100, (totalInjust / maxInjust) * 100) + '%';
-    document.getElementById('barra-fotos').style.width  = Math.min(100, (fotos / maxFotos) * 100) + '%';
-    document.getElementById('val-injust').textContent = '−' + totalInjust;
-    document.getElementById('val-fotos').textContent  = '+' + fotos;
- 
+    document.getElementById('pct-numero').textContent = hayNotas ? fmt(d.promedio) : '—';
+
+    // Transparencia: la cuenta exacta del alumno + última nota de cada materia (con su trimestre)
+    const calculo = document.getElementById('calculo-personal');
+    const detalleEl = document.getElementById('notas-detalle');
+    const desplegable = document.getElementById('notas-desplegable');
+    if (desplegable) {
+        desplegable.style.display = hayNotas ? 'block' : 'none';
+        const badge = document.getElementById('notas-badge');
+        if (badge) badge.textContent = d.notasDetalle.length;
+    }
+    if (calculo) {
+        calculo.innerHTML = hayNotas
+            ? `<strong>Tu cuenta:</strong> (${d.notasDetalle.map(n => fmt(n.cuenta)).join(' + ')}) ÷ ${d.notasDetalle.length} = <strong>${fmt(d.promedio)}</strong>`
+            : '<strong>Tu cuenta:</strong> todavía no tenés notas cargadas por tus profesores, por eso no hay promedio.';
+    }
+    if (detalleEl) {
+        detalleEl.innerHTML = hayNotas ? d.notasDetalle.map(n => {
+            const extra = [n.r1 !== null ? `R1: ${fmt(n.r1)}` : '', n.r2 !== null ? `R2: ${fmt(n.r2)}` : '']
+                .filter(Boolean).join(' · ');
+            return `<div class="factor-row">
+                <span class="factor-nombre">${escapeAttr(n.materia)} · ${escapeAttr(n.trimestre)}</span>
+                <div class="factor-barra-wrap"><div class="factor-barra fotos-barra" style="width:${Math.min(100, n.cuenta * 10)}%"></div></div>
+                <span class="factor-valor fotos" title="${extra}">${fmt(n.cuenta)}</span>
+            </div>`;
+        }).join('') : '';
+    }
+
     // Historial
     const historial = document.getElementById('historial-lista');
     if (historial) {
@@ -690,15 +722,18 @@ function iniciarEstadisticas() {
  
     // Chip de estado
     const chip = document.getElementById('estado-chip');
-    if (pct >= 80) {
-        chip.className = 'beneficio-estado estado-excelente';
-        chip.innerHTML = '✦ ¡Excelente! Tenés el máximo beneficio en cantina';
-    } else if (pct >= 50) {
+    if (!hayNotas) {
         chip.className = 'beneficio-estado estado-bueno';
-        chip.innerHTML = '◈ Buen rendimiento — seguí subiendo clases para mejorar';
+        chip.innerHTML = '◈ Todavía no hay notas cargadas — tu promedio aparece cuando tus profesores suban notas';
+    } else if (pct >= 8) {
+        chip.className = 'beneficio-estado estado-excelente';
+        chip.innerHTML = '✦ ¡Excelente promedio! Seguí así';
+    } else if (pct >= 7) {
+        chip.className = 'beneficio-estado estado-bueno';
+        chip.innerHTML = '◈ Buen rendimiento — con un poco más podés llegar a 8';
     } else {
         chip.className = 'beneficio-estado estado-riesgo';
-        chip.innerHTML = '⚠ Riesgo de perder el beneficio — justificá tus faltas';
+        chip.innerHTML = '⚠ Promedio por debajo de 7 — consultá a tus profesores por recuperatorios';
     }
  
     setTimeout(() => {
@@ -783,14 +818,25 @@ function dibujarGraficoBeneficio(pct) {
     const ctx = document.getElementById('grafico-beneficio');
     if (!ctx) return;
  
-    const colorPct = pct >= 80 ? 'rgba(70,130,180,0.90)' : pct >= 50 ? 'rgba(70,130,180,0.85)' : 'rgba(200,80,80,0.85)';
+    if (pct === null || pct === undefined) {
+        // Sin notas: anillo vacío en gris
+        window._chartBeneficio = new Chart(ctx, {
+            type: 'doughnut',
+            data: { datasets: [{ data: [100], backgroundColor: ['rgba(200,200,200,0.18)'], borderWidth: 0, hoverOffset: 0 }] },
+            options: { responsive: false, cutout: '72%', plugins: { legend: { display: false }, tooltip: { enabled: false } } }
+        });
+        return;
+    }
+
+    const colorPct = pct >= 7 ? 'rgba(70,130,180,0.90)' : 'rgba(200,80,80,0.85)';
+    const llenado  = Math.min(100, Math.max(0, pct * 10)); // promedio sobre 10 → porción del anillo
  
-    const esCien = pct >= 100;
+    const esCien = llenado >= 100;
     window._chartBeneficio = new Chart(ctx, {
         type: 'doughnut',
         data: {
             datasets: [{
-                data: esCien ? [100] : [pct, 100 - pct],
+                data: esCien ? [100] : [llenado, 100 - llenado],
                 backgroundColor: esCien
                     ? [colorPct]
                     : [colorPct, 'rgba(200,200,200,0.18)'],
@@ -947,6 +993,27 @@ function enviarFoto() {
 function toggleFormDoc() {
     const f = document.getElementById('form-doc');
     f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+    if (f.style.display !== 'none') cargarPeticionesPendientes();
+}
+
+// Peticiones de documentación que el preceptor le hizo al alumno y siguen pendientes
+function cargarPeticionesPendientes() {
+    const sel   = document.getElementById('doc-peticion');
+    const email = DATOS_ALUMNO.gmail || sessionStorage.getItem('alumno_email') || '';
+    if (!sel || !email) return;
+    fetch(`http://127.0.0.1:5000/mis-peticiones/${encodeURIComponent(email)}`)
+        .then(r => r.json())
+        .then(lista => {
+            const actual = sel.value;
+            sel.innerHTML = '<option value="">Documento libre (no responde a una petición)</option>' +
+                (Array.isArray(lista) ? lista : []).map(p => {
+                    const txt = String(p.documento).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+                    return `<option value="${p.id}">Pedido: ${txt}</option>`;
+                }).join('');
+            sel.value = actual && sel.querySelector(`option[value="${actual}"]`) ? actual : '';
+            sel.style.display = (Array.isArray(lista) && lista.length) ? '' : 'none';
+        })
+        .catch(() => { sel.style.display = 'none'; });
 }
 
 function enviarDocumentacion() {
@@ -961,12 +1028,15 @@ function enviarDocumentacion() {
     fd.append('gmail',       DATOS_ALUMNO.gmail || sessionStorage.getItem('alumno_email') || '');
     fd.append('descripcion', desc);
     fd.append('archivo',     archivo);
+    const selPet = document.getElementById('doc-peticion');
+    if (selPet && selPet.value) fd.append('id_peticion', selPet.value);
 
     fetch('http://127.0.0.1:5000/documentacion', { method: 'POST', body: fd })
         .then(r => r.json())
         .then(data => {
             if (data.error) throw new Error(data.error);
             cargarMisDocumentos(); // refrescar cartas
+            cargarPeticionesPendientes(); // la petición respondida deja de estar pendiente
             document.getElementById('doc-ok').style.display = 'block';
             document.getElementById('doc-desc').value = '';
             document.getElementById('nombre-doc-archivo').textContent = '';
@@ -1124,59 +1194,6 @@ function escapeAttr(str) {
     }); // <-- Aquí faltaba cerrar el evento de scroll
 
 })(); // Cerramos la IIFE correctament
-// ══════════════════════════════════════════
-//  LOGIN POR TARJETA RFID
-// ══════════════════════════════════════════
-function verificarTarjeta() {
-    const input   = document.getElementById('tarjeta-input').value.trim();
-    const errorEl = document.getElementById('tarjeta-error');
-    const btn     = document.querySelector('#tarjeta-input ~ * .btn-login') ||
-                    document.querySelectorAll('.login-col')[1]?.querySelector('.btn-login');
-
-    if (!input) {
-        errorEl.textContent = 'Ingresá tu nombre o ID de tarjeta.';
-        errorEl.style.display = 'block';
-        return;
-    }
-
-    errorEl.style.display = 'none';
-    if (btn) { btn.disabled = true; btn.textContent = 'Verificando...'; }
-
-    fetch('http://127.0.0.1:5000/login-tarjeta', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identificador: input })
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
-        if (data.error) {
-            errorEl.textContent = data.error;
-            errorEl.style.display = 'block';
-            return;
-        }
-        // Login exitoso por tarjeta — misma lógica que OTP
-        DATOS_ALUMNO.gmail    = data.gmail;
-        DATOS_ALUMNO.nombre   = data.nombre;
-        DATOS_ALUMNO.apellido = data.apellido;
-        DATOS_ALUMNO.anio     = data.anio;
-
-        sessionStorage.setItem('alumno_email',    data.gmail);
-        sessionStorage.setItem('alumno_nombre',   data.nombre);
-        sessionStorage.setItem('alumno_apellido', data.apellido);
-        sessionStorage.setItem('alumno_anio',     data.anio);
-        sessionStorage.setItem('alumno_id',       data.id_alumno || '');
-
-        document.getElementById('login-screen').style.display = 'none';
-        mostrarPanel(data.nombre, data.apellido, data.anio);
-    })
-    .catch(() => {
-        if (btn) { btn.disabled = false; btn.textContent = 'Ingresar'; }
-        errorEl.textContent = 'No se pudo conectar con el servidor.';
-        errorEl.style.display = 'block';
-    });
-}
-
 // ══════════════════════════════════════════════
 //  TARJETA DE BENEFICIO — modal con QR
 // ══════════════════════════════════════════════
@@ -1188,13 +1205,13 @@ function abrirTarjeta() {
     const nombre   = sessionStorage.getItem('alumno_nombre')   || '';
     const apellido = sessionStorage.getItem('alumno_apellido') || '';
     const gmail    = sessionStorage.getItem('alumno_email')    || '';
-    const pct      = window._kronoPCT !== undefined ? window._kronoPCT : '—';
+    const pct      = (window._kronoPCT !== undefined && window._kronoPCT !== null) ? window._kronoPCT : '—';
 
     // Nombre completo
     document.getElementById('tarjeta-nombre').textContent = `${apellido}, ${nombre}`;
 
     // Porcentaje
-    document.getElementById('tarjeta-pct').textContent = pct + '%';
+    document.getElementById('tarjeta-pct').textContent = pct === '—' ? '—' : (Math.round(pct * 100) / 100).toString().replace('.', ',');
 
     // QR — URL de evidencias del alumno (link directo a sus fotos)
     const idAlumno = sessionStorage.getItem('alumno_id') || '';
@@ -1287,4 +1304,480 @@ function descargarQR() {
     const alCambiar = e => { if (!e.matches) setMenu(false); };
     if (mq.addEventListener) mq.addEventListener('change', alCambiar);
     else mq.addListener(alCambiar);
+})();
+
+
+// ══════════════════════════════════════════════
+//  TUTORIAL GUIADO — recorrido paso a paso
+//  Oscurece y desenfoca todo menos lo que se explica.
+//  Se muestra solo la primera vez, se puede omitir y
+//  se vuelve a abrir con el botón "?" de la barra.
+// ══════════════════════════════════════════════
+(function () {
+    const KEY_LOGIN = 'krono-tuto-alumno-login';
+    const KEY_PANEL = 'krono-tuto-alumno-panel';
+
+    const $  = s => document.querySelector(s);
+    const $$ = s => Array.from(document.querySelectorAll(s));
+    const esMovil = () => window.matchMedia('(max-width: 768px)').matches;
+    const sinMov  = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const soportaPath = !!(window.CSS && CSS.supports && CSS.supports('clip-path', 'path("M0 0H1V1Z")'));
+    const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+
+    function leer(k)    { try { return localStorage.getItem(k); } catch (e) { return null; } }
+    function guardar(k) { try { localStorage.setItem(k, '1'); } catch (e) {} }
+    function esperar(ms) { return new Promise(r => setTimeout(r, ms)); }
+    function visible(el) {
+        if (!el) return false;
+        const r = el.getBoundingClientRect();
+        return r.width > 0 && r.height > 0;
+    }
+    function pantallaVisible(id) {
+        const el = document.getElementById(id);
+        return !!el && getComputedStyle(el).display !== 'none';
+    }
+
+    // ── PASOS ─────────────────────────────────
+    // objetivo: selector | elemento | array | función que devuelve
+    //           elementos (se calcula la caja que los une)
+    // si: función; si devuelve false el paso se saltea (secciones que no siempre se ven)
+    // abrir / cerrar: abren y cierran algo propio del paso (ej. la tarjeta con QR)
+    // maxAlto: recorta la zona resaltada cuando el contenido es muy largo
+    // alTope: sube al inicio (elementos de la barra)
+    function pasosLogin() {
+        return [
+            { titulo: '¡Bienvenido a Krono!',
+              texto: 'Este es el acceso de Estudiantes. Te muestro en un minuto cómo ingresar y qué vas a encontrar en tu panel. Podés omitir el recorrido cuando quieras.' },
+            { titulo: 'Tu correo institucional',
+              texto: 'Escribí tu correo @escuelasproa.edu.ar. Tiene que ser el que la escuela tiene registrado para vos.',
+              objetivo: '.login-card .input-icon-wrap' },
+            { titulo: 'Ingresar con código',
+              texto: 'Tocá «Ingresar»: te mandamos un código de 6 dígitos a ese correo. Lo escribís en la pantalla siguiente y entrás a tu panel. El código dura 5 minutos.',
+              objetivo: '.login-card .btn-login' },
+            { titulo: 'Tu ayuda, siempre a mano',
+              texto: 'Este botón vuelve a abrir el tutorial cuando quieras. La primera vez que ingreses te muestro el panel completo.',
+              objetivo: '.tuto-ayuda', alTope: true }
+        ];
+    }
+
+    function pasosPanel() {
+        const nombre = (sessionStorage.getItem('alumno_nombre') || '').trim().split(/\s+/)[0];
+        const pasos = [
+            { titulo: nombre ? '¡Hola, ' + nombre + '!' : '¡Hola!',
+              texto: 'Este es tu panel de estudiante: tus faltas, tus notas y todo lo que podés enviar a la escuela. Te muestro cada parte mientras el resto queda de fondo. Avanzá con «Siguiente» o con las flechas del teclado.',
+              objetivo: '.perfil-header', alTope: true },
+            { titulo: 'Menú principal',
+              texto: 'Desde acá pasás de un panel a otro: Estudiantes (donde estás), Preceptoría, Directivos y Profesores.',
+              textoMovil: 'Tocá las tres rayitas para abrir el menú y pasar de un panel a otro: Estudiantes, Preceptoría, Directivos y Profesores.',
+              objetivo: () => esMovil() ? $('#menu-toggle') : $('#nav-principal'), alTope: true },
+            { titulo: 'Modo claro u oscuro',
+              texto: 'Cambiá la apariencia a gusto. El ícono muestra el modo al que vas a pasar y Krono recuerda tu elección.',
+              objetivo: '#modo-toggle-btn', alTope: true },
+            { titulo: 'Notificaciones',
+              texto: 'La campanita te avisa cuando el preceptor te manda un mensaje privado o publica un aviso para tu curso. Si hay algo nuevo, se enciende un puntito.',
+              objetivo: '#notif-btn', alTope: true },
+            { titulo: 'Cerrar sesión',
+              texto: 'Cuando termines, cerrá sesión, sobre todo si usás una compu compartida.',
+              objetivo: '.panel-header-right .btn-logout', alTope: true },
+            { titulo: 'Tus datos',
+              texto: 'Tu curso, división, legajo y año lectivo, para que verifiques que está todo bien.',
+              objetivo: '#info-alumno-card' },
+            { titulo: 'Tu resumen de faltas',
+              texto: 'Cuatro tarjetas: faltas totales, injustificadas, justificadas y clases subidas. Pasá el mouse (o tocá) sobre cada una para darla vuelta y ver el número.',
+              objetivo: '.stats-resumen-grid' },
+            { titulo: 'Llegadas tarde',
+              texto: 'Cuántas veces llegaste después de las 8:00. Se cuentan solas cuando escaneás tu QR en la entrada.',
+              objetivo: '.tardanzas-bar-card' },
+            { titulo: 'Faltas por mes',
+              texto: 'El gráfico muestra tus faltas mes a mes, separando las justificadas de las injustificadas.',
+              objetivo: () => $('.stats-section .grafico-card:not(.beneficio-card)') },
+            { titulo: 'Historial detallado',
+              texto: 'Tocá este cuadro para desplegar el listado de cada falta, con su fecha y si está justificada o no.',
+              objetivo: '.historial-card' },
+            { titulo: 'Promedio académico',
+              texto: 'Es el promedio de las notas que cargaron tus profesores (de cada materia cuenta solo la última nota que se cargó, o la del recuperatorio si lo rendiste, y se divide por la cantidad de materias). Abajo ves cómo se calcula y el detalle por materia.',
+              objetivo: '.beneficio-card', maxAlto: 380 },
+            { titulo: 'Avisos del preceptor',
+              si: () => visible($('#avisos-alumno-section')),
+              texto: 'Acá figuran los avisos para tu curso, por ejemplo cuando se avisa que van a llegar tarde por un paro de transporte.',
+              objetivo: '#avisos-alumno-section', maxAlto: 260 },
+            { titulo: 'Llegué tarde',
+              texto: 'Si llegaste después de las 8:00, contá el motivo acá (y adjuntá un comprobante si tenés) para que quede registrado.',
+              objetivo: '#card-tarde' },
+            { titulo: 'Estuve ausente',
+              texto: 'Justificá una falta: elegí la fecha, escribí el motivo y, si tenés, adjuntá el certificado.',
+              objetivo: '#card-falta' },
+            { titulo: 'Subir documentación',
+              texto: 'Enviá los documentos que te pidan: constancias, fichas, formularios. Si el preceptor te pidió uno, aparece en una lista para que respondas esa petición.',
+              objetivo: '#card-doc' },
+            { titulo: 'Foto de clase',
+              texto: 'Subí una foto de lo que hiciste en clase para mostrar que llevás la materia al día. Los tres puntitos de la tarjeta abren tu tarjeta KRONO.',
+              objetivo: '#card-foto' },
+            { titulo: 'Tu tarjeta KRONO',
+              texto: 'Acá está tu QR personal, el que escaneás en la entrada de la escuela para registrar tu ingreso. Podés descargarlo. Además muestra tu promedio académico.',
+              objetivo: '.tarjeta-modal-card',
+              abrir: async () => { abrirTarjeta(); await esperar(sinMov ? 0 : 450); },
+              cerrar: () => { const m = document.getElementById('tarjeta-modal'); if (m) cerrarTarjeta({ target: m }); } },
+            { titulo: 'Mis fotos y certificados',
+              si: () => visible($('#cartas-docs-section')),
+              texto: 'Acá quedan las fotos y certificados que ya subiste, apilados como cartas. Tocá una para verla en grande.',
+              objetivo: '#cartas-docs-section', maxAlto: 360 },
+            { titulo: '¡Eso es todo!',
+              texto: 'Ya conocés todo el panel. Cuando quieras repasarlo, tocá este botón.',
+              objetivo: '.tuto-ayuda', alTope: true }
+        ];
+        return pasos.filter(p => !p.si || p.si());
+    }
+
+    // ── ESTADO ────────────────────────────────
+    let activo = false, tipo = null, pasos = [], idx = 0, ticket = 0, cierrePaso = null;
+    let raf = 0, animando = false, cambiando = false, pendiente = false;
+    let actual = { x: 0, y: 0, w: 0, h: 0 };
+    let bloqueo, velo, anillo, card, ro, previoFoco, estadoInicial;
+    let elContador, elBarra, elTitulo, elTexto, btnAnt, btnSig, btnOmitir;
+
+    // ── GEOMETRÍA ─────────────────────────────
+    const anchoVista = () => document.documentElement.clientWidth;
+    const centro = () => ({ x: anchoVista() / 2, y: window.innerHeight / 2, w: 0, h: 0 });
+
+    function elementosDe(p) {
+        if (!p || !p.objetivo) return [];
+        let o = typeof p.objetivo === 'function' ? p.objetivo() : p.objetivo;
+        if (!Array.isArray(o)) o = [o];
+        return o.map(x => typeof x === 'string' ? $(x) : x).filter(visible);
+    }
+
+    // Caja que une todos los elementos del paso (sin recortar a la pantalla)
+    function rectCrudo(p) {
+        const els = elementosDe(p);
+        if (!els.length) return null;
+        let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
+        els.forEach(el => {
+            const r = el.getBoundingClientRect();
+            x1 = Math.min(x1, r.left);  y1 = Math.min(y1, r.top);
+            x2 = Math.max(x2, r.right); y2 = Math.max(y2, r.bottom);
+        });
+        const pad = 8;
+        const c = { x: x1 - pad, y: y1 - pad, w: (x2 - x1) + pad * 2, h: (y2 - y1) + pad * 2 };
+        if (p.maxAlto) c.h = Math.min(c.h, p.maxAlto + pad * 2);
+        return c;
+    }
+
+    // La misma caja, recortada a lo que se ve en pantalla
+    function rectVisible(p) {
+        const c = rectCrudo(p);
+        if (!c) return null;
+        const m = 8, W = anchoVista(), H = window.innerHeight;
+        const x1 = Math.max(c.x, m), y1 = Math.max(c.y, m);
+        const x2 = Math.min(c.x + c.w, W - m), y2 = Math.min(c.y + c.h, H - m);
+        return (x2 > x1 && y2 > y1) ? { x: x1, y: y1, w: x2 - x1, h: y2 - y1 } : c;
+    }
+    const objetivoActual = () => rectVisible(pasos[idx]) || centro();
+
+    function pintar(r) {
+        actual = r;
+        const rad = Math.max(0, Math.min(16, r.w / 2, r.h / 2));
+        anillo.style.left = r.x + 'px';
+        anillo.style.top = r.y + 'px';
+        anillo.style.width = r.w + 'px';
+        anillo.style.height = r.h + 'px';
+        anillo.style.borderRadius = rad + 'px';
+        if (soportaPath) {
+            const W = anchoVista(), H = window.innerHeight;
+            const { x, y, w, h } = r;
+            velo.style.clipPath =
+                'path(evenodd, "M0 0H' + W + 'V' + H + 'H0Z ' +
+                'M' + (x + rad) + ' ' + y + 'H' + (x + w - rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + w) + ' ' + (y + rad) +
+                'V' + (y + h - rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + w - rad) + ' ' + (y + h) +
+                'H' + (x + rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + x + ' ' + (y + h - rad) +
+                'V' + (y + rad) +
+                'A' + rad + ' ' + rad + ' 0 0 1 ' + (x + rad) + ' ' + y + 'Z")';
+        }
+    }
+
+    // Anima la zona resaltada hacia el paso actual (siguiendo al elemento si se mueve)
+    function animar(dur) {
+        cancelAnimationFrame(raf);
+        const desde = Object.assign({}, actual);
+        const t0 = performance.now();
+        animando = true;
+        const cuadro = ahora => {
+            const t = dur ? Math.min(1, (ahora - t0) / dur) : 1;
+            const e = t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+            const h = objetivoActual();
+            pintar({
+                x: desde.x + (h.x - desde.x) * e, y: desde.y + (h.y - desde.y) * e,
+                w: desde.w + (h.w - desde.w) * e, h: desde.h + (h.h - desde.h) * e
+            });
+            if (t < 1) raf = requestAnimationFrame(cuadro);
+            else { animando = false; pintar(objetivoActual()); }
+        };
+        raf = requestAnimationFrame(cuadro);
+    }
+
+    function esperarScroll(max) {
+        return new Promise(res => {
+            let ultimo = window.scrollY, quieto = 0;
+            const t0 = performance.now();
+            (function f() {
+                const y = window.scrollY;
+                quieto = (y === ultimo) ? quieto + 1 : 0;
+                ultimo = y;
+                if (quieto >= 4 || performance.now() - t0 > (max || 900)) res();
+                else requestAnimationFrame(f);
+            })();
+        });
+    }
+
+    // Acomoda el scroll para que se vean a la vez lo resaltado y la tarjeta
+    async function asegurarVisible(p) {
+        const beh = sinMov ? 'auto' : 'smooth';
+        if (p.alTope) {
+            if (window.scrollY > 4) { window.scrollTo({ top: 0, behavior: beh }); await esperarScroll(); }
+            return;
+        }
+        const c = rectCrudo(p);
+        if (!c) return;
+        const H = window.innerHeight, m = 12, gap = 16, ch = card.offsetHeight;
+        const hayLugar = (H - (c.y + c.h) - gap - m >= ch) || (c.y - gap - m >= ch);
+        if (c.y >= m && c.y + c.h <= H - m && hayLugar) return;
+
+        const sb = $('.sidebar');
+        const calc = topMin => {
+            const libre = H - topMin - m, bloque = c.h + gap + ch;
+            const topDeseado = bloque <= libre ? topMin + (libre - bloque) / 2 : topMin;
+            return c.y - topDeseado;
+        };
+        let delta = calc(m);
+        // Si se sube, reaparece la barra fija: dejarle su lugar
+        if (delta < -6 || window.scrollY + delta <= 10) delta = calc((sb ? sb.offsetHeight : 0) + m);
+        if (Math.abs(delta) < 4) return;
+        window.scrollBy({ top: delta, behavior: beh });
+        await esperarScroll();
+    }
+
+    function ubicarCard() {
+        const W = anchoVista(), H = window.innerHeight, m = 12, gap = 16;
+        const cw = card.offsetWidth, ch = card.offsetHeight;
+        const r = rectVisible(pasos[idx]);
+        let left, top;
+        if (!r) {
+            left = (W - cw) / 2; top = (H - ch) / 2;
+        } else {
+            const x = clamp(r.x + r.w / 2 - cw / 2, m, W - cw - m);
+            if (H - (r.y + r.h) - gap - m >= ch)      { left = x; top = r.y + r.h + gap; }
+            else if (r.y - gap - m >= ch)              { left = x; top = r.y - gap - ch; }
+            else if (W - (r.x + r.w) - gap - m >= cw)  { left = r.x + r.w + gap; top = clamp(r.y, m, H - ch - m); }
+            else if (r.x - gap - m >= cw)              { left = r.x - gap - cw;  top = clamp(r.y, m, H - ch - m); }
+            else                                       { left = x; top = H - ch - m; }
+        }
+        card.style.left = Math.round(left) + 'px';
+        card.style.top  = Math.round(top) + 'px';
+    }
+
+    function pedirReubicar() {
+        if (!activo || pendiente) return;
+        pendiente = true;
+        requestAnimationFrame(() => {
+            pendiente = false;
+            if (!activo || animando || cambiando) return;
+            pintar(objetivoActual());
+            ubicarCard();
+        });
+    }
+
+    // ── PASOS: MOSTRAR / NAVEGAR ──────────────
+    function rellenar(p) {
+        const titulo = typeof p.titulo === 'function' ? p.titulo() : p.titulo;
+        const ultimo = idx === pasos.length - 1;
+        elContador.textContent = 'Paso ' + (idx + 1) + ' de ' + pasos.length;
+        elBarra.style.width = ((idx + 1) / pasos.length * 100) + '%';
+        elTitulo.textContent = titulo;
+        elTexto.textContent = (esMovil() && p.textoMovil) ? p.textoMovil : p.texto;
+        btnAnt.disabled = idx === 0;
+        btnSig.textContent = ultimo ? '¡Listo!' : 'Siguiente →';
+        btnOmitir.hidden = ultimo;
+    }
+
+    function limpiarPaso() {
+        if (cierrePaso) { try { cierrePaso(); } catch (e) {} cierrePaso = null; }
+    }
+
+    async function mostrarPaso(i) {
+        const mio = ++ticket;
+        idx = i;
+        cambiando = true;
+        const p = pasos[i];
+        card.classList.add('tuto-cambiando');
+
+        limpiarPaso();
+        await esperar(sinMov ? 0 : 120);
+        if (mio !== ticket) return;
+        if (tipo === 'panel' && p.abrir) { cierrePaso = p.cerrar || null; await p.abrir(); }
+        if (mio !== ticket) return;
+
+        rellenar(p);
+        await asegurarVisible(p);
+        if (mio !== ticket) return;
+
+        anillo.classList.toggle('tuto-anillo-sin', !rectVisible(p));
+        ubicarCard();
+        cambiando = false;
+        animar(sinMov ? 0 : 480);
+        await esperar(sinMov ? 0 : 200);
+        if (mio !== ticket) return;
+
+        card.classList.remove('tuto-cambiando');
+        btnSig.focus({ preventScroll: true });
+    }
+
+    const siguiente = () => { if (activo) (idx >= pasos.length - 1 ? cerrar('fin') : mostrarPaso(idx + 1)); };
+    const anterior  = () => { if (activo && idx > 0) mostrarPaso(idx - 1); };
+
+    function onKey(e) {
+        if (!activo) return;
+        if (e.key === 'Escape')          { e.preventDefault(); e.stopPropagation(); cerrar('omitir'); }
+        else if (e.key === 'ArrowRight') { e.preventDefault(); siguiente(); }
+        else if (e.key === 'ArrowLeft')  { e.preventDefault(); anterior(); }
+        else if (e.key === 'Tab') {
+            const f = Array.from(card.querySelectorAll('button:not([disabled]):not([hidden])'));
+            if (!f.length) return;
+            const i = f.indexOf(document.activeElement);
+            if (e.shiftKey && i <= 0)            { e.preventDefault(); f[f.length - 1].focus(); }
+            else if (!e.shiftKey && i === f.length - 1) { e.preventDefault(); f[0].focus(); }
+            else if (i === -1)                   { e.preventDefault(); f[0].focus(); }
+        }
+    }
+
+    // ── INICIO / CIERRE ───────────────────────
+    function crearDOM() {
+        bloqueo = document.createElement('div'); bloqueo.className = 'tuto-bloqueo';
+        velo    = document.createElement('div'); velo.className    = 'tuto-velo';
+        anillo  = document.createElement('div'); anillo.className  = 'tuto-anillo';
+        card    = document.createElement('div'); card.className    = 'tuto-card tuto-cambiando';
+        card.setAttribute('role', 'dialog');
+        card.setAttribute('aria-modal', 'true');
+        card.setAttribute('aria-labelledby', 'tuto-titulo');
+        card.setAttribute('aria-describedby', 'tuto-texto');
+        card.tabIndex = -1;
+        card.innerHTML =
+            '<div class="tuto-card-top">' +
+                '<span class="tuto-contador" id="tuto-contador"></span>' +
+                '<button type="button" class="tuto-omitir" id="tuto-omitir">Omitir ✕</button>' +
+            '</div>' +
+            '<div class="tuto-progreso"><span id="tuto-barra"></span></div>' +
+            '<p class="tuto-titulo" id="tuto-titulo"></p>' +
+            '<p class="tuto-texto" id="tuto-texto" aria-live="polite"></p>' +
+            '<div class="tuto-acciones">' +
+                '<button type="button" class="tuto-btn-sec" id="tuto-ant">← Anterior</button>' +
+                '<button type="button" class="tuto-btn-pri" id="tuto-sig">Siguiente →</button>' +
+            '</div>';
+        [bloqueo, velo, anillo, card].forEach(e => document.body.appendChild(e));
+
+        elContador = card.querySelector('#tuto-contador');
+        elBarra    = card.querySelector('#tuto-barra');
+        elTitulo   = card.querySelector('#tuto-titulo');
+        elTexto    = card.querySelector('#tuto-texto');
+        btnAnt     = card.querySelector('#tuto-ant');
+        btnSig     = card.querySelector('#tuto-sig');
+        btnOmitir  = card.querySelector('#tuto-omitir');
+        btnAnt.addEventListener('click', anterior);
+        btnSig.addEventListener('click', siguiente);
+        btnOmitir.addEventListener('click', () => cerrar('omitir'));
+    }
+
+    function iniciar(t) {
+        if (activo) return;
+        if (t === 'panel' && !pantallaVisible('panel-screen')) return;
+        if (t === 'login' && !pantallaVisible('login-screen')) return;
+
+        tipo = t;
+        pasos = t === 'panel' ? pasosPanel() : pasosLogin();
+        idx = 0;
+        activo = true;
+        previoFoco = document.activeElement;
+        estadoInicial = t === 'panel' ? { y: window.scrollY } : null;
+        const sb = $('.sidebar'); if (sb) sb.classList.remove('menu-abierto');
+
+        crearDOM();
+        pintar(centro());
+        requestAnimationFrame(() => [velo, anillo].forEach(e => e.classList.add('tuto-in')));
+
+        document.addEventListener('keydown', onKey, true);
+        window.addEventListener('scroll', pedirReubicar, { passive: true });
+        window.addEventListener('resize', pedirReubicar);
+        if (typeof ResizeObserver !== 'undefined') {
+            ro = new ResizeObserver(pedirReubicar);
+            ro.observe(document.body);
+        }
+        mostrarPaso(0);
+    }
+
+    function cerrar(motivo) {
+        if (!activo) return;
+        activo = false; animando = false; cambiando = false; ticket++;
+        cancelAnimationFrame(raf);
+
+        if (tipo === 'panel') {
+            guardar(KEY_PANEL);
+            limpiarPaso();
+            if (estadoInicial) window.scrollTo({ top: estadoInicial.y, behavior: 'auto' });
+        } else {
+            guardar(KEY_LOGIN);
+            if (motivo === 'omitir') guardar(KEY_PANEL);   // quien omite no quiere más tutoriales solos
+        }
+
+        document.removeEventListener('keydown', onKey, true);
+        window.removeEventListener('scroll', pedirReubicar);
+        window.removeEventListener('resize', pedirReubicar);
+        if (ro) { ro.disconnect(); ro = null; }
+
+        const viejos = [bloqueo, velo, anillo, card];
+        [velo, anillo].forEach(e => e.classList.remove('tuto-in'));
+        card.classList.add('tuto-cambiando');
+        bloqueo.style.pointerEvents = 'none';
+        setTimeout(() => viejos.forEach(e => e.remove()), 350);
+
+        if (previoFoco && document.contains(previoFoco)) {
+            try { previoFoco.focus({ preventScroll: true }); } catch (e) {}
+        }
+    }
+
+    // ── BOTÓN "?" EN LA BARRA + ARRANQUE AUTOMÁTICO ──
+    function crearBotonAyuda() {
+        if ($('#tuto-ayuda-btn')) return;
+        const b = document.createElement('button');
+        b.id = 'tuto-ayuda-btn';
+        b.type = 'button';
+        b.className = 'tuto-ayuda';
+        b.title = 'Ver tutorial';
+        b.setAttribute('aria-label', 'Ver tutorial guiado');
+        b.textContent = '?';
+        b.addEventListener('click', () => iniciar(pantallaVisible('panel-screen') ? 'panel' : 'login'));
+        const modo = $('#modo-toggle-btn'), sidebar = $('.sidebar');
+        if (modo && modo.parentNode) modo.parentNode.insertBefore(b, modo.nextSibling);
+        else if (sidebar) sidebar.appendChild(b);
+    }
+
+    function arrancarSiCorresponde() {
+        if (pantallaVisible('panel-screen')) { if (!leer(KEY_PANEL)) iniciar('panel'); }
+        else if (pantallaVisible('login-screen') && !leer(KEY_LOGIN)) iniciar('login');
+    }
+
+    window.kronoTutorial = {
+        iniciar: iniciar,
+        // Se llama tras un login correcto: muestra el panel la primera vez
+        alIngresar: function () { if (!leer(KEY_PANEL)) setTimeout(() => iniciar('panel'), 700); }
+    };
+
+    function init() {
+        crearBotonAyuda();
+        if (document.readyState === 'complete') setTimeout(arrancarSiCorresponde, 900);
+        else window.addEventListener('load', () => setTimeout(arrancarSiCorresponde, 900));
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
 })();

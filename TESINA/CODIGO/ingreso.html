@@ -24,7 +24,7 @@
             min-height: 100vh;
             font-family: 'DM Sans', sans-serif;
             color: var(--ink);
-            overflow: hidden;
+            overflow-x: hidden;
             transition: background-color 0.35s ease, color 0.35s ease;
         }
 
@@ -79,18 +79,57 @@
         }
         .modo-btn img { width: 52px; height: 52px; object-fit: contain; }
 
-        /* CONTENIDO PRINCIPAL */
+        /* CONTENIDO PRINCIPAL LAYOUT */
         .ingreso-main {
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
             min-height: calc(100vh - 80px);
-            padding: 2rem 1.5rem;
-            gap: 1.5rem;
+            padding: 2rem;
+            gap: 2rem;
+            max-width: 1100px;
+            margin: 0 auto;
         }
 
-        /* CÁMARA */
+        /* INSTRUCCIÓN SUPERIOR */
+        .instruccion-top {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .instruccion-titulo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            color: var(--ink);
+            letter-spacing: 0.02em;
+        }
+        .instruccion-sub {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.9rem;
+            color: var(--ink-muted);
+            letter-spacing: 0.04em;
+        }
+
+        /* CONTENEDOR 2 COLUMNAS (ESCANER A LA IZQ, ESTADO A LA DER) */
+        .layout-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            width: 100%;
+            align-items: center;
+        }
+
+        /* CÁMARA (COLUMNA IZQUIERDA) */
+        .scanner-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+            width: 100%;
+        }
         .scanner-wrap {
             position: relative;
             width: 100%;
@@ -150,27 +189,49 @@
             100% { top: 16px;   opacity: 0.8; }
         }
 
-        /* ESTADO / RESULTADO */
+        .instruccion-scan {
+            font-size: 0.82rem;
+            color: var(--ink-muted);
+            text-align: center;
+            letter-spacing: 0.04em;
+            animation: bounce-hint 2.6s ease-in-out infinite;
+        }
+        @keyframes bounce-hint {
+            0%,100% { transform: translateY(0);   opacity: 0.7; }
+            50%      { transform: translateY(4px); opacity: 1; }
+        }
+
+        /* ESTADO / RESULTADO (COLUMNA DERECHA) */
         .estado-wrap {
             width: 100%;
-            max-width: 420px;
-            min-height: 90px;
             display: flex;
             align-items: center;
             justify-content: center;
         }
 
+        .estado-placeholder {
+            border: 2px dashed rgba(75,163,217,0.3);
+            border-radius: 18px;
+            padding: 3rem 2rem;
+            text-align: center;
+            width: 100%;
+            color: var(--ink-muted);
+            font-size: 0.9rem;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(4px);
+        }
+
         .estado-card {
             width: 100%;
-            background: rgba(255,255,255,0.82);
+            background: rgba(255,255,255,0.85);
             border: 1.5px solid rgba(75,163,217,0.25);
-            border-radius: 18px;
-            padding: 1.2rem 1.8rem;
+            border-radius: 20px;
+            padding: 2.5rem 2rem;
             text-align: center;
             backdrop-filter: blur(8px);
-            box-shadow: 0 4px 20px rgba(26,111,168,0.12);
+            box-shadow: 0 8px 30px rgba(26,111,168,0.12);
             display: none;
-            animation: pop-in 0.3s cubic-bezier(0.175,0.885,0.32,1.275);
+            animation: pop-in 1s cubic-bezier(0.175,0.885,0.32,1.275);
             transition: background 0.35s ease, border-color 0.35s ease;
         }
         @keyframes pop-in {
@@ -182,76 +243,30 @@
         .estado-card.estado-error { border-color: rgba(200,80,60,0.4); }
         .estado-card.estado-show  { display: block; }
 
-        .estado-emoji { font-size: 2rem; display: block; margin-bottom: 6px; }
+        .estado-emoji { font-size: 3rem; display: block; margin-bottom: 10px; }
         .estado-nombre {
             font-family: 'Cormorant Garamond', serif;
-            font-size: 1.5rem; font-weight: 600;
+            font-size: 1.8rem; font-weight: 600;
             color: var(--ink); display: block;
         }
         .estado-hora {
-            font-size: 0.9rem; color: var(--ink-muted);
-            margin-top: 4px; display: block;
+            font-size: 1rem; color: var(--ink-muted);
+            margin-top: 6px; display: block;
         }
         .estado-badge {
-            display: inline-block; margin-top: 8px;
-            padding: 3px 12px; border-radius: 999px;
-            font-size: 0.75rem; font-weight: 600;
+            display: inline-block; margin-top: 12px;
+            padding: 6px 16px; border-radius: 999px;
+            font-size: 0.85rem; font-weight: 600;
         }
         .badge-ok    { background: rgba(45,138,94,0.15);  color: #2d8a5e; }
         .badge-tarde { background: rgba(200,80,60,0.12);  color: #c84040; }
         .badge-error { background: rgba(200,80,60,0.12);  color: #c84040; }
 
-        /* INSTRUCCIÓN SUPERIOR */
-        .instruccion-top {
-            text-align: center;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-        .instruccion-titulo {
-            font-family: 'Cormorant Garamond', serif;
-            font-size: 1.5rem;
-            font-weight: 600;
-            color: var(--ink);
-            letter-spacing: 0.02em;
-        }
-        .instruccion-sub {
-            font-family: 'DM Sans', sans-serif;
-            font-size: 0.82rem;
-            color: var(--ink-muted);
-            letter-spacing: 0.04em;
-        }
-        .kbd-enter {
-            display: inline-block;
-            background: rgba(75,163,217,0.12);
-            border: 1.5px solid rgba(75,163,217,0.35);
-            border-bottom-width: 3px;
-            border-radius: 6px;
-            padding: 1px 9px;
-            font-family: 'DM Sans', monospace;
-            font-size: 0.78rem;
-            font-weight: 600;
-            color: var(--sky-deep);
-            letter-spacing: 0.05em;
-        }
-        body.dark-mode .instruccion-titulo { color: var(--ink); }
-        body.dark-mode .kbd-enter {
-            background: rgba(75,163,217,0.10);
-            border-color: rgba(75,163,217,0.3);
-            color: var(--sky-mid);
-        }
-
-        /* INSTRUCCIÓN */
-        .instruccion-scan {
-            font-size: 0.82rem;
-            color: var(--ink-muted);
-            text-align: center;
-            letter-spacing: 0.04em;
-            animation: bounce-hint 2.6s ease-in-out infinite;
-        }
-        @keyframes bounce-hint {
-            0%,100% { transform: translateY(0);   opacity: 0.7; }
-            50%      { transform: translateY(4px); opacity: 1; }
+        /* ADAPTACIÓN PANTALLAS PEQUEÑAS */
+        @media (max-width: 768px) {
+            .layout-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
         /* ── DARK MODE ── */
@@ -268,6 +283,10 @@
         body.dark-mode .estado-card {
             background: rgba(8,20,38,0.88) !important;
             border-color: rgba(75,163,217,0.22) !important;
+        }
+        body.dark-mode .estado-placeholder {
+            border-color: rgba(75,163,217,0.2);
+            background: rgba(8,20,38,0.4);
         }
         body.dark-mode .estado-nombre { color: var(--ink); }
         body.dark-mode .estado-hora   { color: var(--ink-muted); }
@@ -292,33 +311,40 @@
         <!-- Instrucción arriba -->
         <div class="instruccion-top">
             <p class="instruccion-titulo">Mostrá tu QR a la cámara</p>
-            <p class="instruccion-sub">Brillo al máximo · presioná <span class="kbd-enter">Enter</span> para escanear</p>
+            <p class="instruccion-sub">Brillo al máximo · escaneo automático</p>
         </div>
 
-        <!-- Cámara scanner -->
-        <div class="scanner-wrap">
-            <div class="scanner-card">
-                <video id="scanner-video" playsinline muted></video>
+        <!-- GRIDA EN 2 COLUMNAS (ESCANER A LA IZQ / RESULTADOS A LA DER) -->
+        <div class="layout-grid">
+            
+            <!-- COLUMNA IZQUIERDA: CÁMARA ESCÁNER -->
+            <div class="scanner-container">
+                <div class="scanner-wrap">
+                    <div class="scanner-card">
+                        <video id="scanner-video" playsinline muted></video>
+                    </div>
+                    <div class="scanner-frame"></div>
+                    <div class="scanner-line"></div>
+                </div>
+                <p class="instruccion-scan">Si no se detecta, acercá más el celular a la cámara</p>
             </div>
-            <div class="scanner-frame"></div>
-            <div class="scanner-line"></div>
-        </div>
 
-        <!-- Resultado -->
-        <div class="estado-wrap">
-            <div class="estado-card" id="estado-card">
-                <span class="estado-emoji" id="estado-emoji">✅</span>
-                <span class="estado-nombre" id="estado-nombre">—</span>
-                <span class="estado-hora"   id="estado-hora">—</span>
-                <span class="estado-badge"  id="estado-badge"></span>
+            <!-- COLUMNA DERECHA: RESULTADO Y ADVERTENCIAS -->
+            <div class="estado-wrap">
+                <div class="estado-placeholder" id="estado-placeholder">
+                    <span>Esperando escaneo de código QR...</span>
+                </div>
+                <div class="estado-card" id="estado-card">
+                    <span class="estado-emoji" id="estado-emoji">✅</span>
+                    <span class="estado-nombre" id="estado-nombre">—</span>
+                    <span class="estado-hora"   id="estado-hora">—</span>
+                    <span class="estado-badge"  id="estado-badge"></span>
+                </div>
             </div>
-        </div>
 
-        <p class="instruccion-scan">Si no se detecta, acercá más el cel y presioná Enter de nuevo</p>
+        </div>
 
     </main>
-
-    <canvas id="scanner-canvas" style="display:none;"></canvas>
 
     <script>
     // ── DARK MODE ──────────────────────────────────────────────
@@ -343,28 +369,35 @@
         actualizarModoImg(ahora);
     }
 
-    // ── SCANNER QR con ZXing ────────────────────────────────────
+    // ── SCANNER QR AUTOMÁTICO ──────────────────────────────────
     const BACKEND      = 'http://127.0.0.1:5000';
-    const HORA_ENTRADA = '07:30';
     let escaneando    = true;
     let ultimoQR      = '';
     let cooldownTimer = null;
 
     function iniciarScanner() {
         const codeReader = new ZXing.BrowserQRCodeReader();
+
         codeReader.listVideoInputDevices()
             .then(devices => {
                 const deviceId = devices.length > 1
                     ? (devices.find(d => /back|rear|environment/i.test(d.label)) || devices[devices.length - 1]).deviceId
                     : (devices[0] || {}).deviceId;
+
                 return codeReader.decodeFromVideoDevice(deviceId, 'scanner-video', (result, err) => {
                     if (result && escaneando) {
                         const datos = result.getText().trim();
+
                         if (datos.startsWith('KRONO-') && datos !== ultimoQR) {
                             ultimoQR   = datos;
                             escaneando = false;
+
                             const idAlumno = parseInt(datos.replace('KRONO-', ''));
-                            if (!isNaN(idAlumno)) registrarIngreso(idAlumno);
+                            if (!isNaN(idAlumno)) {
+                                registrarIngreso(idAlumno);
+                            } else {
+                                escaneando = true;
+                            }
                         }
                     }
                 });
@@ -389,23 +422,36 @@
             if (data.error) {
                 mostrarEstado('error', '❌', 'Error', data.error, 'badge-error');
             } else {
-                const esTarde  = data.hora > HORA_ENTRADA;
+                const esTarde  = !!data.tarde;   // lo calcula el servidor: QR después de las 08:00
                 const emoji    = esTarde ? '⚠️' : '✅';
                 const badge    = esTarde ? 'badge-tarde' : 'badge-ok';
-                const badgeTxt = esTarde ? `Llegada tarde · ${data.hora}` : `A tiempo · ${data.hora}`;
+                const previo   = data.ya_registrado ? 'Ya registrado · ' : '';
+                const badgeTxt = esTarde ? `${previo}Llegada tarde · ${data.hora}` : `${previo}A tiempo · ${data.hora}`;
                 mostrarEstado(esTarde ? 'tarde' : 'ok', emoji, `${data.apellido}, ${data.nombre}`, `${data.anio}° año`, badge, badgeTxt);
             }
+            
             clearTimeout(cooldownTimer);
-            cooldownTimer = setTimeout(() => { escaneando = true; ultimoQR = ''; ocultarEstado(); }, 3000);
+            cooldownTimer = setTimeout(() => { 
+                escaneando = true; 
+                ultimoQR = ''; 
+                ocultarEstado(); 
+            }, 3000);
         })
         .catch(() => {
             mostrarEstado('error', '❌', 'Sin conexión', 'Verificá que el servidor esté activo', 'badge-error');
             clearTimeout(cooldownTimer);
-            cooldownTimer = setTimeout(() => { escaneando = true; ultimoQR = ''; ocultarEstado(); }, 3000);
+            cooldownTimer = setTimeout(() => { 
+                escaneando = true; 
+                ultimoQR = ''; 
+                ocultarEstado(); 
+            }, 3000);
         });
     }
 
     function mostrarEstado(tipo, emoji, nombre, hora, badgeClass, badgeTxt) {
+        const placeholder = document.getElementById('estado-placeholder');
+        if (placeholder) placeholder.style.display = 'none';
+
         const card = document.getElementById('estado-card');
         card.className = `estado-card estado-show estado-${tipo === 'ok' ? 'ok' : tipo === 'tarde' ? 'error' : 'error'}`;
         document.getElementById('estado-emoji').textContent  = emoji;
@@ -417,7 +463,11 @@
     }
 
     function ocultarEstado() {
-        document.getElementById('estado-card').className = 'estado-card';
+        const card = document.getElementById('estado-card');
+        card.className = 'estado-card';
+        
+        const placeholder = document.getElementById('estado-placeholder');
+        if (placeholder) placeholder.style.display = 'block';
     }
     </script>
 </body>

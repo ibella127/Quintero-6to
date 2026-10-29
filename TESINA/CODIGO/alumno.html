@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Alumno</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="alumno-style.css?v=2">
+    <link rel="stylesheet" href="alumno-style.css?v=4">
     <style>
         /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
            cruzan según el modo — evita que se vean las dos pisadas juntas */
@@ -288,9 +288,6 @@
                         <button class="btn-login" onclick="verificarLogin()">Ingresar</button>
                     </div>
 
-                    <!-- Tarjeta RFID (oculta) -->
-                    <input type="text" id="tarjeta-input" style="display:none;" autocomplete="off">
-                    <p id="tarjeta-error" class="login-error" style="display:none;">Tarjeta no reconocida. Intentá de nuevo.</p>
                 </div>
 
                 <!-- ══════════ PANEL ══════════ -->
@@ -404,7 +401,7 @@
                                 <span class="tardanzas-bar-icon">🕐</span>
                                 <div class="tardanzas-bar-texto">
                                     <span class="tardanzas-bar-titulo">Llegadas tarde</span>
-                                    <span class="tardanzas-bar-desc">Veces que llegaste después de las 07:40 registradas por el scanner</span>
+                                    <span class="tardanzas-bar-desc">Veces que llegaste después de las 08:00 registradas por el scanner</span>
                                 </div>
                             </div>
                             <div class="tardanzas-bar-der">
@@ -445,37 +442,32 @@
                         <!-- Gráfico beneficio -->
                         <div class="grafico-card beneficio-card">
                             <div class="grafico-titulo-row">
-                                <h3 class="grafico-titulo">Índice de beneficio</h3>
-                                <p class="grafico-subtitulo">Basado en faltas injustificadas y clases subidas</p>
+                                <h3 class="grafico-titulo">Promedio académico</h3>
+                                <p class="grafico-subtitulo">Basado en el promedio de las notas que cargaron tus profesores</p>
                             </div>
                             <div class="beneficio-layout">
                                 <div class="medidor-wrap">
                                     <canvas id="grafico-beneficio" width="200" height="200"></canvas>
                                     <div class="medidor-centro">
                                         <span class="medidor-pct" id="pct-numero">—</span>
-                                        <span class="medidor-label">beneficio</span>
+                                        <span class="medidor-label">sobre 10</span>
                                     </div>
                                 </div>
                                 <div class="factores-wrap">
                                     <p class="factores-titulo">¿Cómo se calcula?</p>
-                                    <div class="factor-row">
-                                        <span class="factor-nombre">Faltas injustificadas</span>
-                                        <div class="factor-barra-wrap">
-                                            <div class="factor-barra injust-barra" id="barra-injust" style="width:0%"></div>
-                                        </div>
-                                        <span class="factor-valor injust" id="val-injust">—</span>
-                                    </div>
-                                    <div class="factor-row">
-                                        <span class="factor-nombre">Clases subidas</span>
-                                        <div class="factor-barra-wrap">
-                                            <div class="factor-barra fotos-barra" id="barra-fotos" style="width:0%"></div>
-                                        </div>
-                                        <span class="factor-valor fotos" id="val-fotos">—</span>
-                                    </div>
                                     <div class="beneficio-regla">
-                                        <p class="regla-titulo">Regla de beneficio</p>
-                                        <p class="regla-texto">Partís de <strong>100%</strong>. Cada falta injustificada resta <strong>−10 pts</strong>. Cada clase subida suma <strong>+2 pts</strong>. El beneficio se aplica a tu descuento en cantina.</p>
+                                        <p class="regla-titulo">Transparencia: así sale tu promedio</p>
+                                        <p class="regla-texto">
+                                            1. De cada <strong>materia</strong> cuenta una sola nota: la <strong>última que se cargó</strong> (con su trimestre). Si rendiste recuperatorio (R1/R2), cuenta la del recuperatorio.<br>
+                                            2. <strong>Promedio</strong> = suma de esas notas ÷ cantidad de materias.<br>
+                                            3. El resultado es tu <strong>promedio académico</strong>, de 1 a 10 (por ejemplo, 8 + 9 + 7 ÷ 3 = 8). Es el mismo número que figura en tu tarjeta Krono.
+                                        </p>
+                                        <p class="regla-texto" id="calculo-personal" style="margin-top:8px;"></p>
                                     </div>
+                                    <details class="notas-desplegable" id="notas-desplegable" style="display:none;">
+                                        <summary>Ver detalle: última nota de cada materia <span class="notas-desplegable-badge" id="notas-badge">0</span></summary>
+                                        <div id="notas-detalle" class="notas-detalle"></div>
+                                    </details>
                                     <div class="beneficio-estado" id="estado-chip"></div>
                                 </div>
                             </div>
@@ -545,6 +537,9 @@
                                 <p class="accion-desc">Adjuntá cualquier documento que necesites presentar (formularios, constancias, fichas, etc.).</p>
                                 <button class="btn-accion" onclick="toggleFormDoc()">Subir documentación</button>
                                 <div id="form-doc" class="accion-form" style="display:none;">
+                                    <select id="doc-peticion" class="login-input" style="display:none; margin-bottom:8px;">
+                                        <option value="">Documento libre (no responde a una petición)</option>
+                                    </select>
                                     <input type="file" id="doc-archivo" accept=".pdf,.doc,.docx,.xls,.xlsx,.txt,image/*" class="accion-file">
                                     <label for="doc-archivo" class="btn-file">📎 Elegir archivo</label>
                                     <span id="nombre-doc-archivo" class="archivo-nombre"></span>
@@ -660,7 +655,7 @@
                 <div class="tarjeta-col-der">
                     <p class="tarjeta-subtitulo">El/la estudiante</p>
                     <p class="tarjeta-nombre-alumno" id="tarjeta-nombre">—</p>
-                    <p class="tarjeta-desc">Al entregar las tareas y no llegar tarde ni faltar, el/la estudiante tiene un descuento de:</p>
+                    <p class="tarjeta-desc">Según las notas cargadas por sus profesores, el/la estudiante tiene un promedio académico de:</p>
                     <p class="tarjeta-pct" id="tarjeta-pct">—</p>
                 </div>
 
@@ -668,6 +663,6 @@
         </div>
     </div>
 
-    <script src="alumno-script.js?v=2"></script>
+    <script src="alumno-script.js?v=8"></script>
 </body>
 </html>

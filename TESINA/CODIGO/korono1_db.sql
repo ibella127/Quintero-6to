@@ -293,3 +293,46 @@ INSERT IGNORE INTO profesores (nombre, apellido, gmail, dni, materias, cursos, e
 ('Antonella', 'Monchietti', 'advmonchietti@escuelasproa.edu.ar', NULL, 'Club de arte', '2do', FALSE),
 ('Sofi', 'Druetta', 'sfdrueta@escuelasproa.edu.ar', NULL, 'Coordinadora', NULL, FALSE),
 ('Elisa', 'Selva', 'ebselva@escuelasproa.edu.ar', NULL, 'FVT / Ciudadanía', '5to', FALSE);
+
+
+-- ══════════════════════════════════════════════════════════════
+-- Tabla NOTAS: notas cargadas por los profesores.
+--  · trimestre es texto libre: '1er Trimestre', '2do Trimestre',
+--    '3er Trimestre' y '4to Trimestre' (son 4 trimestres).
+--  · observacion guarda los motivos de las notas bajas (< 7),
+--    separados por ' | '.
+--  · r1_nota / r2_nota son las notas de Recuperatorio 1 y 2 de esa
+--    nota (salen en las columnas R1 / R2 del Excel de la libreta).
+--  · id_profesor indica qué profesor cargó la nota (se completa solo
+--    desde el panel de Profesores; las notas viejas quedan en NULL).
+-- (se crea automáticamente al iniciar app.py, se deja acá también
+--  como referencia / para poder crearla a mano)
+-- ══════════════════════════════════════════════════════════════
+CREATE TABLE IF NOT EXISTS notas (
+    id             INT AUTO_INCREMENT PRIMARY KEY,
+    id_alumno      INT NOT NULL,
+    materia        VARCHAR(100) NOT NULL,
+    trimestre      VARCHAR(20) NOT NULL,
+    nota           DECIMAL(4,2) NOT NULL,
+    observacion    VARCHAR(300) DEFAULT NULL,
+    id_profesor    INT DEFAULT NULL,
+    recu_numero    INT DEFAULT NULL,
+    recu_titulo    VARCHAR(150) DEFAULT NULL,
+    recu_nota      DECIMAL(4,2) DEFAULT NULL,
+    recu_creado_en TIMESTAMP NULL DEFAULT NULL,
+    r1_nota        DECIMAL(4,2) DEFAULT NULL,
+    r2_nota        DECIMAL(4,2) DEFAULT NULL,
+    creado_en      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_alumno) REFERENCES alumnos(id_alumno)
+);
+
+-- Si la tabla notas ya existía sin la columna del profesor:
+-- ALTER TABLE notas ADD COLUMN id_profesor INT DEFAULT NULL;
+
+-- Si la tabla notas ya existía sin las columnas de recuperatorio (R1 / R2):
+-- ALTER TABLE notas ADD COLUMN r1_nota DECIMAL(4,2) DEFAULT NULL;
+-- ALTER TABLE notas ADD COLUMN r2_nota DECIMAL(4,2) DEFAULT NULL;
+-- Pasar a R1 / R2 los recuperatorios que se cargaron con el modal anterior
+-- (N° de evaluación 1 o 2); los de otro número no se tocan:
+-- UPDATE notas SET r1_nota = recu_nota WHERE recu_numero = 1 AND recu_nota IS NOT NULL AND r1_nota IS NULL;
+-- UPDATE notas SET r2_nota = recu_nota WHERE recu_numero = 2 AND recu_nota IS NOT NULL AND r2_nota IS NULL;

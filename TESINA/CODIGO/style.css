@@ -972,3 +972,269 @@ body.dark-mode .nav-item[href*="profesores"] img {
     .section-title { font-size: 1.6rem; margin-bottom: 1.5rem; }
     .form-container { padding: 1.5rem 1.1rem; }
 }
+
+
+/* ══════════════════════════════════════════════
+   FOOTER
+══════════════════════════════════════════════ */
+html { scroll-behavior: smooth; }
+
+.site-footer {
+    position: relative;
+    width: 100%;
+    margin-top: 3rem;
+    padding: 3.5rem 2rem 1.5rem;
+    overflow: hidden;
+    background: linear-gradient(180deg, rgba(255,255,255,0.35) 0%, rgba(168,212,245,0.28) 100%);
+    border-top: 1px solid rgba(75,163,217,0.2);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+
+/* Línea de acento animada arriba de todo */
+.site-footer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg,
+        transparent 0%, var(--sky-strong) 25%, var(--sky-mid) 50%, var(--sky-strong) 75%, transparent 100%);
+    background-size: 200% 100%;
+    animation: footer-linea 6s linear infinite;
+}
+@keyframes footer-linea {
+    from { background-position: 0% 0; }
+    to   { background-position: 200% 0; }
+}
+
+/* Orbe decorativo, igual que el del hero */
+.site-footer::after {
+    content: '';
+    position: absolute;
+    width: 340px; height: 340px;
+    right: -110px; bottom: -150px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 40% 40%,
+        rgba(75,163,217,0.20) 0%, rgba(168,212,245,0.09) 50%, transparent 70%);
+    animation: orbe-float 8s ease-in-out infinite;
+    pointer-events: none;
+}
+
+.footer-inner,
+.footer-bottom {
+    position: relative;
+    z-index: 1;
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.footer-inner {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr 1.2fr;
+    gap: 3rem;
+    padding-bottom: 2.5rem;
+}
+
+.footer-col { display: flex; flex-direction: column; }
+
+/* ── Logo de la escuela, esquina superior derecha ── */
+.footer-proa {
+    position: absolute;
+    top: 0; right: 0;
+    width: 84px; height: auto;
+    pointer-events: none;
+}
+body.dark-mode .footer-proa {
+    /* el texto del logo es azul oscuro: un fondo claro lo mantiene legible */
+    background: rgba(255,255,255,0.92);
+    border-radius: 50%;
+    padding: 4px;
+}
+
+/* ── Marca ── */
+.footer-logo-img { width: 90px; height: auto; margin-bottom: 1rem; }
+.footer-tagline {
+    font-size: 0.92rem;
+    font-weight: 300;
+    line-height: 1.65;
+    color: var(--ink-muted);
+    max-width: 320px;
+}
+
+.footer-chips {
+    list-style: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1.2rem 0 1.4rem;
+}
+.footer-chips li {
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    padding: 5px 12px;
+    border-radius: 999px;
+    color: var(--sky-deep);
+    background: rgba(255,255,255,0.65);
+    border: 1px solid rgba(75,163,217,0.28);
+}
+
+.footer-cta {
+    align-self: flex-start;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 11px 22px;
+    border-radius: 12px;
+    background: var(--sky-deep);
+    color: #fff;
+    font-size: 0.9rem;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+    text-decoration: none;
+    box-shadow: 0 6px 18px rgba(26,111,168,0.25);
+    transition: background-color 0.25s ease, transform 0.25s ease, box-shadow 0.25s ease !important;
+}
+.footer-cta span { transition: transform 0.25s ease !important; }
+.footer-cta:hover {
+    background: var(--sky-strong);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(75,163,217,0.35);
+}
+.footer-cta:hover span { transform: translateX(4px); }
+
+/* ── Títulos de columna ── */
+.footer-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    font-style: italic;
+    color: var(--sky-deep);
+    margin-bottom: 1.1rem;
+    padding-bottom: 0.6rem;
+    position: relative;
+}
+.footer-title::after {
+    content: '';
+    position: absolute;
+    left: 0; bottom: 0;
+    width: 34px; height: 2px;
+    border-radius: 2px;
+    background: var(--sky-strong);
+}
+
+/* ── Links ── */
+.footer-links a {
+    display: inline-flex;
+    align-items: center;
+    align-self: flex-start;
+    gap: 0;
+    padding: 0.35rem 0;
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    text-decoration: none;
+    color: var(--ink-muted);
+    transition: color 0.25s ease, gap 0.25s ease !important;
+}
+.footer-links a::before {
+    content: '';
+    width: 0; height: 2px;
+    border-radius: 2px;
+    background: var(--sky-strong);
+    transition: width 0.25s ease !important;
+}
+.footer-links a:hover { color: var(--sky-deep); gap: 0.6rem; }
+.footer-links a:hover::before { width: 16px; }
+
+/* ── Datos del proyecto ── */
+.footer-datos { display: flex; flex-direction: column; gap: 0.85rem; }
+.footer-datos dt {
+    font-size: 0.66rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--sky-strong);
+}
+.footer-datos dd {
+    margin: 2px 0 0;
+    font-size: 0.92rem;
+    color: var(--ink);
+}
+
+/* ── Barra inferior ── */
+.footer-bottom {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid rgba(75,163,217,0.2);
+    font-size: 0.8rem;
+    font-weight: 300;
+    letter-spacing: 0.03em;
+    color: var(--ink-muted);
+}
+
+.footer-top {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px; height: 42px;
+    border-radius: 50%;
+    color: var(--sky-deep);
+    background: rgba(255,255,255,0.7);
+    border: 1.5px solid rgba(75,163,217,0.3);
+    transition: transform 0.25s ease, background-color 0.25s ease,
+                color 0.25s ease, box-shadow 0.25s ease !important;
+}
+.footer-top:hover {
+    transform: translateY(-4px);
+    background: var(--sky-deep);
+    color: #fff;
+    box-shadow: 0 8px 20px rgba(75,163,217,0.4);
+}
+
+/* ── Modo oscuro ── */
+body.dark-mode .site-footer {
+    background: linear-gradient(180deg, rgba(8,20,38,0.45) 0%, rgba(26,111,168,0.18) 100%);
+    border-top-color: rgba(75,163,217,0.18);
+}
+body.dark-mode .footer-logo-img { content: url('logo-lateral-blanco.png'); }
+body.dark-mode .footer-title { color: var(--sky-mid); }
+body.dark-mode .footer-links a:hover { color: var(--sky-mid); }
+body.dark-mode .footer-chips li {
+    color: var(--sky-mid);
+    background: rgba(26,111,168,0.18);
+    border-color: rgba(75,163,217,0.25);
+}
+body.dark-mode .footer-cta { background: var(--sky-strong); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+body.dark-mode .footer-cta:hover { background: var(--sky-mid); color: #0c1a2e; }
+body.dark-mode .footer-bottom { border-top-color: rgba(75,163,217,0.15); }
+body.dark-mode .footer-top {
+    color: var(--sky-mid);
+    background: rgba(8,20,38,0.7);
+    border-color: rgba(75,163,217,0.28);
+}
+body.dark-mode .footer-top:hover { background: var(--sky-mid); color: #0c1a2e; }
+
+/* ── Tablets ── */
+@media (max-width: 900px) {
+    .footer-inner { grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+    .footer-brand { grid-column: 1 / -1; }
+}
+
+/* ── Celulares ── */
+@media (max-width: 640px) {
+    .site-footer { padding: 2.5rem 1.25rem 1.25rem; margin-top: 2rem; }
+    .footer-inner { grid-template-columns: 1fr; gap: 2rem; padding-bottom: 2rem; }
+    .footer-bottom { font-size: 0.74rem; }
+    .footer-proa { width: 64px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .site-footer::before, .site-footer::after { animation: none; }
+    html { scroll-behavior: auto; }
+}

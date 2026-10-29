@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Profesores</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="profesores-style.css?v=2">
+    <link rel="stylesheet" href="profesores-style.css?v=8">
     <script>
         // Prevenir flash blanco en modo oscuro
         if (localStorage.getItem('krono-dark') === '1') {
@@ -131,6 +131,7 @@
                                                 <option value="1er Trimestre">1er Trimestre</option>
                                                 <option value="2do Trimestre">2do Trimestre</option>
                                                 <option value="3er Trimestre">3er Trimestre</option>
+                                                <option value="4to Trimestre">4to Trimestre</option>
                                             </select>
                                             <p class="login-error" id="wiz-error-1" style="display:none;"></p>
                                             <div class="wizard-nav">
@@ -191,8 +192,39 @@
                                             <div id="wiz-nota-grid" class="wizard-nota-grid"></div>
                                             <button type="button" class="wizard-link-decimal" id="wiz-decimal-toggle" onclick="mostrarNotaDecimal()">Usar una nota con decimales</button>
                                             <input type="number" id="wiz-nota-decimal" class="aviso-input" min="1" max="10" step="0.01" placeholder="Ej: 8.5" style="display:none; margin-top:8px;">
-                                            <textarea id="wiz-observacion" class="aviso-textarea" placeholder="Observación (opcional)" style="margin-top:12px;"></textarea>
+
+                                            <div class="wizard-recu">
+                                                <p class="wizard-recu-label">¿Es una nota de recuperatorio?</p>
+                                                <div class="wizard-recu-botones">
+                                                    <button type="button" class="btn-recu" onclick="cargarRecuperatorioWizard(1)">Recuperatorio 1</button>
+                                                    <button type="button" class="btn-recu" onclick="cargarRecuperatorioWizard(2)">Recuperatorio 2</button>
+                                                </div>
+                                            </div>
+
                                             <p class="login-error" id="wiz-error-4" style="display:none;"></p>
+                                            <div class="wizard-nav">
+                                                <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
+                                                <button class="btn-login wizard-btn-siguiente" id="wiz-btn-paso-nota" onclick="wizardSiguiente()">Siguiente →</button>
+                                            </div>
+                                        </div>
+                                    </section>
+
+                                    <!-- Paso 6: Motivos (solo si la nota es menor a 7) -->
+                                    <section class="wizard-step" data-step="5">
+                                        <div class="wizard-card">
+                                            <span class="wizard-step-num">6</span>
+                                            <h2 class="wizard-pregunta">Motivos</h2>
+                                            <p class="wizard-ayuda">Elegí uno o más motivos (opcional).</p>
+                                            <div id="wiz-motivos-lista" class="wizard-alumno-lista wizard-motivos-lista">
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" value="Falta de estudio / compromiso"><span>Falta de estudio / compromiso</span></label>
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" value="Dificultades en la comprensión"><span>Dificultades en la comprensión</span></label>
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" value="Inasistencias"><span>Inasistencias</span></label>
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" value="Problemas personales / familiares"><span>Problemas personales / familiares</span></label>
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" value="Trabajo grupal / cuaderno incompleto"><span>Trabajo grupal / cuaderno incompleto</span></label>
+                                                <label class="wizard-alumno-item"><input type="checkbox" name="wiz-motivo" id="wiz-motivo-otros" value="__otros__"><span>Otros</span></label>
+                                            </div>
+                                            <textarea id="wiz-observacion" class="aviso-textarea" placeholder="Escribí el motivo específico" style="display:none; margin-top:12px;"></textarea>
+                                            <p class="login-error" id="wiz-error-5" style="display:none;"></p>
                                             <div class="wizard-nav">
                                                 <button class="wizard-btn-atras" onclick="wizardAtras()">← Atrás</button>
                                                 <button class="btn-login wizard-btn-siguiente" onclick="cargarNotaWizard()">Cargar nota</button>
@@ -221,6 +253,13 @@
                                 <button type="button" class="curso-pill-flecha" onclick="cursoPanelSiguiente()">›</button>
                             </div>
 
+                            <div class="trimestre-tabs" id="trimestre-tabs" role="group" aria-label="Trimestre">
+                                <button type="button" class="trimestre-tab" data-trimestre="1er Trimestre" onclick="seleccionarTrimestrePanel('1er Trimestre')">1er Trimestre</button>
+                                <button type="button" class="trimestre-tab" data-trimestre="2do Trimestre" onclick="seleccionarTrimestrePanel('2do Trimestre')">2do Trimestre</button>
+                                <button type="button" class="trimestre-tab" data-trimestre="3er Trimestre" onclick="seleccionarTrimestrePanel('3er Trimestre')">3er Trimestre</button>
+                                <button type="button" class="trimestre-tab" data-trimestre="4to Trimestre" onclick="seleccionarTrimestrePanel('4to Trimestre')">4to Trimestre</button>
+                            </div>
+
                             <div class="display-area" style="padding:1.5rem;">
                                 <div id="tabla-notas-contenedor" style="width:100%;">
                                     <p class="instruccion">Cargando...</p>
@@ -230,6 +269,14 @@
                             <button type="button" class="btn-logout" style="margin-top:1.5rem;" onclick="mostrarWizardDeNuevo()">+ Cargar otra nota</button>
                         </div>
 
+
+                        <!-- ══════════ DESCARGAR LIBRETA ══════════ -->
+                        <div class="libreta-section">
+                            <button type="button" class="btn-libreta" onclick="abrirLibretaModal()">
+                                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                                Descargar libreta
+                            </button>
+                        </div>
                     </div>
 
                 </div><!-- /panel-screen -->
@@ -256,15 +303,24 @@
                         <option value="1er Trimestre">1er Trimestre</option>
                         <option value="2do Trimestre">2do Trimestre</option>
                         <option value="3er Trimestre">3er Trimestre</option>
+                        <option value="4to Trimestre">4to Trimestre</option>
                     </select>
                 </div>
                 <div class="aviso-campo">
                     <label class="aviso-label">Nota (1 a 10)</label>
                     <input type="number" id="edit-nota-valor" class="aviso-input" min="1" max="10" step="0.01">
                 </div>
-                <div class="aviso-campo">
-                    <label class="aviso-label">Observación</label>
-                    <textarea id="edit-nota-observacion" class="aviso-textarea"></textarea>
+                <div class="aviso-campo" id="edit-motivos-campo" style="display:none;">
+                    <label class="aviso-label">Motivos</label>
+                    <div class="wizard-alumno-lista wizard-motivos-lista">
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" value="Falta de estudio / compromiso"><span>Falta de estudio / compromiso</span></label>
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" value="Dificultades en la comprensión"><span>Dificultades en la comprensión</span></label>
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" value="Inasistencias"><span>Inasistencias</span></label>
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" value="Problemas personales / familiares"><span>Problemas personales / familiares</span></label>
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" value="Trabajo grupal / cuaderno incompleto"><span>Trabajo grupal / cuaderno incompleto</span></label>
+                        <label class="wizard-alumno-item"><input type="checkbox" name="edit-motivo" id="edit-motivo-otros" value="__otros__"><span>Otros</span></label>
+                    </div>
+                    <textarea id="edit-nota-observacion" class="aviso-textarea" placeholder="Escribí el motivo específico" style="display:none; margin-top:12px;"></textarea>
                 </div>
                 <p id="edit-nota-error" class="login-error" style="display:none;"></p>
                 <button class="btn-login" onclick="guardarEdicionNota()">Guardar cambios</button>
@@ -272,34 +328,59 @@
         </div>
     </div>
 
-    <!-- ══════════ MODAL RECUPERATORIO ══════════ -->
+    <!-- ══════════ MODAL RECUPERATORIOS (R1 / R2) ══════════ -->
     <div id="recu-modal-overlay">
         <div class="docs-modal-backdrop" onclick="cerrarRecuModal()"></div>
         <div class="docs-modal-box">
             <button class="lightbox-cerrar" onclick="cerrarRecuModal()">✕</button>
             <div class="docs-modal-header">
-                <p class="docs-modal-alumno" id="recu-modal-alumno-nombre">Recuperatorio</p>
+                <p class="docs-modal-alumno" id="recu-modal-alumno-nombre">Recuperatorios</p>
+                <p class="wizard-ayuda" id="recu-modal-detalle" style="margin:4px 0 0;"></p>
             </div>
             <div class="docs-modal-lista">
                 <div class="aviso-campo">
-                    <label class="aviso-label">N° de evaluación</label>
-                    <input type="number" id="recu-numero" class="aviso-input" min="1" step="1" placeholder="Ej: 1">
+                    <label class="aviso-label">Recuperatorio 1 (R1) — nota de 1 a 10</label>
+                    <input type="number" id="recu-r1" class="aviso-input" min="1" max="10" step="0.01" placeholder="Sin cargar">
                 </div>
                 <div class="aviso-campo">
-                    <label class="aviso-label">Título</label>
-                    <input type="text" id="recu-titulo" class="aviso-input" placeholder="Ej: Recuperatorio trimestral">
+                    <label class="aviso-label">Recuperatorio 2 (R2) — nota de 1 a 10</label>
+                    <input type="number" id="recu-r2" class="aviso-input" min="1" max="10" step="0.01" placeholder="Sin cargar">
                 </div>
-                <div class="aviso-campo">
-                    <label class="aviso-label">Nota (1 a 10)</label>
-                    <input type="number" id="recu-valor" class="aviso-input" min="1" max="10" step="0.01">
-                </div>
+                <p class="wizard-ayuda" style="margin:0;">Dejá un campo vacío para quitar ese recuperatorio.</p>
                 <p id="recu-modal-error" class="login-error" style="display:none;"></p>
-                <button class="btn-login" onclick="guardarRecuperatorio()">Guardar recuperatorio</button>
-                <button type="button" class="btn-eliminar-nota" id="recu-modal-quitar" style="margin-top:8px; display:none;" onclick="quitarRecuperatorioDesdeModal()">Quitar recuperatorio</button>
+                <button class="btn-login" onclick="guardarRecuperatorio()">Guardar recuperatorios</button>
             </div>
         </div>
     </div>
 
-    <script src="profesores-script.js?v=2"></script>
+    <!-- ══════════ MODAL DESCARGAR LIBRETA ══════════ -->
+    <div id="libreta-modal-overlay">
+        <div class="docs-modal-backdrop" onclick="cerrarLibretaModal()"></div>
+        <div class="docs-modal-box">
+            <button class="lightbox-cerrar" onclick="cerrarLibretaModal()">✕</button>
+            <div class="docs-modal-header">
+                <p class="docs-modal-alumno">Descargar libreta</p>
+            </div>
+            <div class="docs-modal-lista">
+                <div class="aviso-campo">
+                    <label class="aviso-label">¿Qué trimestres? (podés elegir más de uno)</label>
+                    <div id="libreta-trimestres" class="libreta-opciones"></div>
+                </div>
+                <div class="aviso-campo" id="libreta-materias-campo">
+                    <label class="aviso-label" id="libreta-materias-label">¿Qué materia?</label>
+                    <div id="libreta-materias" class="libreta-opciones"></div>
+                </div>
+                <div class="aviso-campo">
+                    <label class="aviso-label" id="libreta-anios-label">¿Qué año?</label>
+                    <div id="libreta-anios" class="libreta-opciones"></div>
+                </div>
+                <p id="libreta-error" class="login-error" style="display:none;"></p>
+                <button type="button" class="btn-login" id="btn-libreta-descargar" onclick="descargarLibreta()">Descargar Excel</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="profesores-script.js?v=10"></script>
 </body>
 </html>
