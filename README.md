@@ -93,13 +93,12 @@ También pueden descargar la **libreta de calificaciones** seleccionando el trim
 * [x] Diseño de base de datos
 * [x] Interfaz web
 * [x] Conexión Python ↔ SQL
-* [ ] Panel de estadísticas - Directivos
+* [x] Panel de estadísticas - Directivos
 * [x] Integración código QR
 * [x] Panel de registro de faltas
-* [ ] Sistema de ingreso
-* [ ] Chatbot (en riesgo de descarte)
+* [x] Sistema de ingreso
 * [x] Sistema de digitalización de documentación
-* [ ] Panel de carga de notas
+* [x] Panel de carga de notas
 
 ---
 
