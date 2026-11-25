@@ -229,6 +229,7 @@ function cerrarSesion() {
     sessionStorage.removeItem('prof_nombre');
     sessionStorage.removeItem('prof_materias');
     sessionStorage.removeItem('prof_cursos');
+    agpDetener();
     document.getElementById('panel-screen').style.display = 'none';
     document.getElementById('login-screen').style.display = 'block';
     document.getElementById('login-paso-codigo').style.display = 'none';
@@ -242,6 +243,7 @@ function cerrarSesion() {
 // --- INICIO DEL PANEL: el asistente aparece apenas se ingresa ---
 
 function iniciarPanelProfesores() {
+    agpIniciar();   // ícono de calendario: avisos de la dirección
     const nombreGuardado = sessionStorage.getItem('prof_nombre');
     if (nombreGuardado) document.getElementById('wiz-nombre').value = nombreGuardado;
 
@@ -1298,7 +1300,7 @@ function armarFilasLibreta(alumnos, notas, materia, trimestres) {
 
 // Cerrar modales con Escape
 document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { cerrarNotaModal(); cerrarRecuModal(); cerrarLibretaModal(); }
+    if (e.key === 'Escape') { cerrarNotaModal(); cerrarRecuModal(); cerrarLibretaModal(); cerrarAgendaProfe(); }
 });
 
 // --- INIT ---
@@ -1917,3 +1919,226 @@ document.addEventListener('input', e => {
     if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
     else init();
 })();
+
+// ══════════════════════════════════════════════
+//  AGENDA — avisos de la dirección + confirmación de asistencia
+//  Usa: GET  /profesores/agenda?gmail=...
+//       POST /profesores/agenda/<id>/asistencia   { gmail, asistencia: 'si' | 'no' }
+// ══════════════════════════════════════════════
+const _AGP_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const _AGP_DIAS  = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+const _agpState = { avisos: [], sel: null, abierto: false, error: false, timer: null, msg: '' };
+
+const _agpPad = n => String(n).padStart(2, '0');
+const _agpIso = d => `${d.getFullYear()}-${_agpPad(d.getMonth() + 1)}-${_agpPad(d.getDate())}`;
+const _agpHoy = () => _agpIso(new Date());
+const _agpCap = t => t.charAt(0).toUpperCase() + t.slice(1);
+function _agpParse(iso) { const [y, m, d] = iso.split('-').map(Number); return new Date(y, m - 1, d); }
+
+function agpIniciar() {
+    agpCargar();
+    clearInterval(_agpState.timer);
+    // Cada minuto se revisan los avisos nuevos (sin recargar la página)
+    _agpState.timer = setInterval(() => {
+        if (sessionStorage.getItem('prof_auth') === 'true') agpCargar();
+    }, 60000);
+}
+
+function agpDetener() {
+    clearInterval(_agpState.timer);
+    _agpState.timer = null;
+    _agpState.avisos = [];
+    _agpState.sel = null;
+    cerrarAgendaProfe();
+    agpActualizarBadge();
+}
+
+async function agpCargar() {
+    const email = sessionStorage.getItem('prof_email');
+    if (!email) return;
+    try {
+        const r = await fetch(`${API_BASE}/profesores/agenda?gmail=${encodeURIComponent(email)}`, { cache: 'no-store' });
+        const data = await r.json();
+        if (!r.ok || !Array.isArray(data)) throw new Error(data.error || 'error');
+        _agpState.avisos = data;
+        _agpState.error = false;
+    } catch (_) {
+        _agpState.error = true;
+    }
+    agpActualizarBadge();
+    if (_agpState.abierto) agpRender();
+}
+
+// Avisos de hoy en adelante que todavía no respondió
+function _agpPendientes() {
+    const hoy = _agpHoy();
+    return _agpState.avisos.filter(a => a.asistencia === 'pendiente' && a.fecha >= hoy).length;
+}
+
+function agpActualizarBadge() {
+    const b = document.getElementById('agp-badge');
+    const fab = document.getElementById('agenda-fab');
+    if (!b || !fab) return;
+    const n = _agpPendientes();
+    b.style.display = n > 0 ? 'grid' : 'none';
+    b.textContent = n > 9 ? '9+' : String(n);
+    fab.classList.toggle('agp-fab-aviso', n > 0);
+    fab.setAttribute('aria-label', n > 0
+        ? `Avisos de la dirección: ${n} sin responder`
+        : 'Avisos de la dirección');
+}
+
+function abrirAgendaProfe() {
+    const ov = document.getElementById('agenda-overlay');
+    if (!ov) return;
+    _agpState.abierto = true;
+    _agpState.msg = '';
+    _agpElegirInicial();
+    ov.classList.add('abierto');
+    ov.setAttribute('aria-hidden', 'false');
+    agpRender();
+    agpCargar();                                 // se refresca al abrir
+}
+
+function cerrarAgendaProfe() {
+    const ov = document.getElementById('agenda-overlay');
+    _agpState.abierto = false;
+    if (!ov) return;
+    ov.classList.remove('abierto');
+    ov.setAttribute('aria-hidden', 'true');
+}
+
+// Primero el próximo aviso sin responder; si no hay, el próximo; si no, el último
+function _agpElegirInicial() {
+    const av = _agpState.avisos;
+    if (_agpState.sel && av.some(a => a.id === _agpState.sel)) return;
+    const hoy = _agpHoy();
+    const prox = av.filter(a => a.fecha >= hoy);
+    const elegido = prox.find(a => a.asistencia === 'pendiente') || prox[0] || av[av.length - 1];
+    _agpState.sel = elegido ? elegido.id : null;
+}
+
+function agpElegir(id) {
+    _agpState.sel = id;
+    _agpState.msg = '';
+    agpRender();
+}
+
+function _agpCalendario(aviso) {
+    const f = _agpParse(aviso.fecha);
+    const anio = f.getFullYear(), mes = f.getMonth();
+    const desfase = (new Date(anio, mes, 1).getDay() + 6) % 7;       // la semana arranca en lunes
+    const diasMes = new Date(anio, mes + 1, 0).getDate();
+    const total = Math.ceil((desfase + diasMes) / 7) * 7;
+    const hoy = _agpHoy();
+    const cab = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<span class="agp-cal-dow">${d}</span>`).join('');
+    const celdas = Array.from({ length: total }, (_, i) => {
+        const n = i - desfase + 1;
+        if (n < 1 || n > diasMes) return '<span class="agp-cal-dia agp-cal-fuera"></span>';
+        const iso = `${anio}-${_agpPad(mes + 1)}-${_agpPad(n)}`;
+        if (iso === aviso.fecha) {
+            const marca = aviso.asistencia === 'si' ? ' agp-cal-si' : aviso.asistencia === 'no' ? ' agp-cal-no' : '';
+            const txt = aviso.asistencia === 'si' ? 'vas a asistir' : aviso.asistencia === 'no' ? 'no vas a asistir' : 'sin responder';
+            return `<span class="agp-cal-dia agp-cal-aviso agp-${aviso.color}${marca}" aria-label="${n} de ${_AGP_MESES[mes]}, ${txt}">${n}</span>`;
+        }
+        return `<span class="agp-cal-dia${iso === hoy ? ' agp-cal-hoy' : ''}">${n}</span>`;
+    }).join('');
+    return `
+        <div class="agp-cal" role="img" aria-label="Calendario de ${_AGP_MESES[mes]} de ${anio}">
+            <div class="agp-cal-mes">${_agpCap(_AGP_MESES[mes])} ${anio}</div>
+            <div class="agp-cal-grid">${cab}${celdas}</div>
+        </div>`;
+}
+
+function _agpChipEstado(a) {
+    if (a.asistencia === 'si') return '<span class="agp-chip agp-chip-si">Voy</span>';
+    if (a.asistencia === 'no') return '<span class="agp-chip agp-chip-no">No voy</span>';
+    return '<span class="agp-chip agp-chip-pend">Sin responder</span>';
+}
+
+function agpRender() {
+    const cont = document.getElementById('agp-contenido');
+    if (!cont) return;
+    const av = _agpState.avisos;
+    if (!av.length) {
+        cont.innerHTML = `
+            <div class="agp-vacio">
+                <span class="agp-vacio-ico" aria-hidden="true">📅</span>
+                <p class="agp-vacio-tit">${_agpState.error ? 'No se pudieron cargar los avisos' : 'No hay avisos por ahora'}</p>
+                <p class="agp-vacio-txt">${_agpState.error
+                    ? 'Revisá tu conexión e intentá de nuevo en un momento.'
+                    : 'Cuando la dirección te envíe una junta o un aviso, lo vas a ver acá.'}</p>
+            </div>`;
+        return;
+    }
+    _agpElegirInicial();
+    const hoy = _agpHoy();
+    const a = av.find(x => x.id === _agpState.sel) || av[0];
+
+    const lista = av.length > 1 ? `
+        <div class="agp-lista" role="listbox" aria-label="Avisos">
+            ${av.map(x => {
+                const f = _agpParse(x.fecha);
+                return `
+                <button type="button" role="option" aria-selected="${x.id === a.id}"
+                        class="agp-item agp-${x.color}${x.id === a.id ? ' on' : ''}${x.fecha < hoy ? ' agp-item-pasado' : ''}"
+                        onclick="agpElegir(${x.id})">
+                    <i class="agp-dot"></i>
+                    <span class="agp-item-tit">${escapeHtml(x.titulo)}</span>
+                    <span class="agp-item-fecha">${f.getDate()} ${_AGP_MESES[f.getMonth()].slice(0, 3)}</span>
+                    ${_agpChipEstado(x)}
+                </button>`;
+            }).join('')}
+        </div>` : '';
+
+    const f = _agpParse(a.fecha);
+    const fechaLarga = `${_agpCap(_AGP_DIAS[(f.getDay() + 6) % 7])} ${f.getDate()} de ${_AGP_MESES[f.getMonth()]} de ${f.getFullYear()}`;
+    const pasado = a.fecha < hoy;
+    const estadoTxt = pasado
+        ? 'Esta fecha ya pasó.'
+        : a.asistencia === 'si' ? 'Marcaste que vas a asistir. Podés cambiar tu respuesta cuando quieras.'
+        : a.asistencia === 'no' ? 'Marcaste que no podés asistir. Podés cambiar tu respuesta cuando quieras.'
+        : 'Todavía no respondiste. La dirección va a ver tu respuesta.';
+
+    cont.innerHTML = `
+        ${lista}
+        <article class="agp-det agp-${a.color}">
+            <p class="agp-fecha">${fechaLarga}</p>
+            <h3 class="agp-titulo">${escapeHtml(a.titulo)}</h3>
+            ${a.descripcion ? `<p class="agp-desc">${escapeHtml(a.descripcion)}</p>` : ''}
+            ${_agpCalendario(a)}
+            <p class="agp-pregunta">¿Vas a estar presente ese día?</p>
+            <div class="agp-resp">
+                <button type="button" class="agp-btn agp-btn-si${a.asistencia === 'si' ? ' on' : ''}" ${pasado ? 'disabled' : ''}
+                        aria-pressed="${a.asistencia === 'si'}" onclick="agpResponder(${a.id}, 'si')">✓ Voy a asistir</button>
+                <button type="button" class="agp-btn agp-btn-no${a.asistencia === 'no' ? ' on' : ''}" ${pasado ? 'disabled' : ''}
+                        aria-pressed="${a.asistencia === 'no'}" onclick="agpResponder(${a.id}, 'no')">✕ No puedo asistir</button>
+            </div>
+            <p class="agp-estado">${estadoTxt}</p>
+            <p class="agp-error" role="alert">${escapeHtml(_agpState.msg)}</p>
+        </article>`;
+}
+
+async function agpResponder(id, valor) {
+    const a = _agpState.avisos.find(x => x.id === id);
+    if (!a || a.asistencia === valor) return;
+    const antes = a.asistencia;
+    a.asistencia = valor;                                  // se ve al instante
+    _agpState.msg = '';
+    agpRender();
+    agpActualizarBadge();
+    try {
+        const r = await fetch(`${API_BASE}/profesores/agenda/${id}/asistencia`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ gmail: sessionStorage.getItem('prof_email') || '', asistencia: valor })
+        });
+        const data = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(data.error || 'No se pudo guardar tu respuesta.');
+    } catch (e) {
+        a.asistencia = antes;                              // si falló, vuelve a lo anterior
+        _agpState.msg = e.message || 'No se pudo guardar tu respuesta.';
+        agpRender();
+        agpActualizarBadge();
+    }
+}

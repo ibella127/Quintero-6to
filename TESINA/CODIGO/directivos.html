@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Krono | Directivos</title>
     <link rel="icon" type="image/x-icon" href="favicon.png">
-    <link rel="stylesheet" href="directivos-style.css?v=21">
+    <link rel="stylesheet" href="directivos-style.css?v=25">
     <style>
         /* Ícono de Profesores: dos imágenes (clara/oscura) superpuestas que se
            cruzan según el modo — evita que se vean las dos pisadas juntas */
@@ -117,6 +117,7 @@
                         <button id="tab-estadisticas" class="tab-btn tab-activa" onclick="cambiarPestania('estadisticas')">📊 Estadísticas</button>
                         <button id="tab-motivos"      class="tab-btn"            onclick="cambiarPestania('motivos')">📋 Profesores</button>
                         <button id="tab-estudiantes"  class="tab-btn"            onclick="cambiarPestania('estudiantes')">📓 Estudiantes</button>
+                        <button id="tab-agenda"       class="tab-btn"            onclick="cambiarPestania('agenda')">📅 Agenda</button>
                     </div>
 
                     <!-- ══ PANEL ESTADÍSTICAS (rendimiento académico) ══ -->
@@ -472,10 +473,80 @@
                         </div>
                     </div>
 
+                    <!-- ══ PANEL AGENDA ══ -->
+                    <div id="panel-agenda" style="display:none;">
+
+                        <!-- Inicio: vista previa de los dos calendarios -->
+                        <div id="ag-inicio">
+                            <div class="ag-previas">
+                                <button type="button" class="ag-previa" onclick="abrirAgenda('privada')">
+                                    <span class="ag-previa-head">
+                                        <span class="prof-cuadro-ico" aria-hidden="true">🗓️</span>
+                                        <span class="prof-cuadro-txt">
+                                            <span class="prof-cuadro-titulo">Mi agenda</span>
+                                            <span class="prof-cuadro-cant" id="ag-cant-privada">—</span>
+                                        </span>
+                                    </span>
+                                    <span class="prof-cuadro-desc">
+                                        Directivo, aquí guardás tus propias fechas y recordatorios.
+                                        Solo vos podés verlas y las organizás por colores.
+                                    </span>
+                                    <span class="ag-mini" id="ag-mini-privada"><span class="ag-mini-cargando">Cargando…</span></span>
+                                </button>
+
+                                <button type="button" class="ag-previa" onclick="abrirAgenda('avisos')">
+                                    <span class="ag-previa-head">
+                                        <span class="prof-cuadro-ico" aria-hidden="true">📣</span>
+                                        <span class="prof-cuadro-txt">
+                                            <span class="prof-cuadro-titulo">Avisos a docentes</span>
+                                            <span class="prof-cuadro-cant" id="ag-cant-avisos">—</span>
+                                        </span>
+                                    </span>
+                                    <span class="prof-cuadro-desc">
+                                        Subí avisos de juntas o lo que necesites comunicar, envialos a un docente
+                                        o a todos, y mirá quién confirmó su asistencia.
+                                    </span>
+                                    <span class="ag-mini" id="ag-mini-avisos"><span class="ag-mini-cargando">Cargando…</span></span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Calendario completo + panel lateral -->
+                        <div id="ag-vista" style="display:none;">
+                            <div class="display-area ag-area">
+                                <div class="prof-lista-head">
+                                    <button type="button" class="btn-curso-mini prof-volver" onclick="cerrarAgendaVista()">← Volver</button>
+                                    <h3 class="seccion-titulo" id="ag-vista-titulo">Agenda</h3>
+                                    <span class="seccion-sub" id="ag-vista-sub"></span>
+                                </div>
+
+                                <div class="ag-layout">
+                                    <div class="ag-cal-col">
+                                        <div class="ag-toolbar">
+                                            <div class="ag-mes">
+                                                <button type="button" class="ag-nav" onclick="agMes(-1)" aria-label="Mes anterior">‹</button>
+                                                <h4 class="ag-mes-titulo" id="ag-mes-titulo" aria-live="polite"></h4>
+                                                <button type="button" class="ag-nav" onclick="agMes(1)" aria-label="Mes siguiente">›</button>
+                                                <button type="button" class="btn-curso-mini ag-hoy-btn" onclick="agHoy()">Hoy</button>
+                                            </div>
+                                            <div class="ag-filtros" id="ag-filtros" role="group" aria-label="Filtrar por color"></div>
+                                        </div>
+                                        <div class="ag-grid" id="ag-cal"></div>
+                                    </div>
+
+                                    <aside class="ag-lado" id="ag-lado" aria-live="polite"></aside>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div><!-- /panel-screen -->
             </div><!-- /dir-container -->
         </main>
     </div>
+
+    <!-- Velo desenfocado de la Agenda: se muestra al tocar una fecha -->
+    <div id="ag-velo" class="ag-velo" onclick="agCerrarPanel()"></div>
 
     <!-- Modal de profes: Actualizar / Eliminar -->
     <div id="prof-modal" class="prof-modal" style="display:none;" onclick="if (event.target === this) cerrarModalProf()">
@@ -490,6 +561,6 @@
         </div>
     </div>
 
-    <script src="directivos-script.js?v=21"></script>
+    <script src="directivos-script.js?v=26"></script>
 </body>
 </html>

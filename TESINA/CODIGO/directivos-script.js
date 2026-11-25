@@ -152,7 +152,9 @@ function cerrarSesion() {
 //  TABS
 // ══════════════════════════════════════════════
 function cambiarPestania(tab) {
-    ['estadisticas','motivos','estudiantes'].forEach(t => {
+    // Al salir de Agenda se apaga el velo desenfocado
+    if (tab !== 'agenda' && typeof agCerrarPanel === 'function') agCerrarPanel();
+    ['estadisticas','motivos','estudiantes','agenda'].forEach(t => {
         // Estadísticas usa display:flex (con gap) en su CSS; con 'block' se perdía el espaciado
         document.getElementById('panel-' + t).style.display = t === tab ? (t === 'estadisticas' ? 'flex' : 'block') : 'none';
         const btn = document.getElementById('tab-' + t);
@@ -160,6 +162,7 @@ function cambiarPestania(tab) {
     });
     if (tab === 'motivos') iniciarMotivosNotas();
     if (tab === 'estudiantes') cargarResumenEstudiantes();
+    if (tab === 'agenda') iniciarAgenda();
     if (tab === 'estadisticas') requestAnimationFrame(() => Object.values(_charts).forEach(ch => ch.resize()));
 }
 
@@ -1494,3 +1497,720 @@ document.addEventListener('visibilitychange', () => {
         cargarResumenEstudiantes();
     }
 });
+
+// ══════════════════════════════════════════════
+//  AGENDA — calendario propio + avisos a docentes
+//  Usa: GET/POST/PUT/DELETE /dir/agenda/fechas       (solo la ve la directiva)
+//       GET/POST/DELETE     /dir/agenda/avisos       (se envían a los docentes)
+//       GET                 /dir/agenda/avisos/<id>  (quién se anotó y quién no)
+//       GET                 /dir/profesores-lista    (docentes para elegir)
+// ══════════════════════════════════════════════
+const _AG_COLORES = [
+    { id: 'c1', nombre: 'Azul noche' },
+    { id: 'c2', nombre: 'Azul profundo' },
+    { id: 'c3', nombre: 'Azul medio' },
+    { id: 'c4', nombre: 'Azul cielo' },
+    { id: 'c5', nombre: 'Celeste' },
+    { id: 'c6', nombre: 'Celeste claro' }
+];
+const _AG_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const _AG_DIAS  = ['lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'];
+const _AG_TIPOS = {
+    privada: { titulo: 'Mi agenda',         url: '/dir/agenda/fechas' },
+    avisos:  { titulo: 'Avisos a docentes', url: '/dir/agenda/avisos' }
+};
+
+let _ag = _agEstadoNuevo();
+const _agObserva = { on: false };
+
+function _agEstadoNuevo() {
+    return {
+        tipo: null,          // 'privada' | 'avisos'
+        mes: null,           // Date (día 1 del mes que se ve)
+        items: [],           // fechas / avisos de la grilla visible
+        filtro: null,        // id de color para filtrar (null = todos)
+        sel: null,           // 'YYYY-MM-DD' de la fecha tocada
+        itemId: null,        // fecha/aviso abierto en el panel
+        paso: 'form',        // 'form' | 'destinatarios' | 'detalle'
+        borrador: null,      // lo escrito en el formulario mientras se elige a quién enviar
+        detalle: null,       // aviso enviado con la lista de docentes
+        destino: 'todos',    // 'todos' | 'elegir'
+        docs: null,          // docentes disponibles
+        docSel: new Set(),   // docentes elegidos
+        docBusca: '',
+        enviando: false,
+        error: false,
+        seq: 0
+    };
+}
+
+// ── utilidades de fecha ──
+const _agPad = n => String(n).padStart(2, '0');
+const _agIso = d => `${d.getFullYear()}-${_agPad(d.getMonth() + 1)}-${_agPad(d.getDate())}`;
+const _agHoy = () => _agIso(new Date());
+const _agCap = t => t.charAt(0).toUpperCase() + t.slice(1);
+const _agAttr = t => _motEsc(t).replace(/"/g, '&quot;');
+
+function _agParse(iso) {
+    const [y, m, d] = iso.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+// Días que se dibujan: arranca en lunes. fijo=true → siempre 6 semanas (alto estable)
+function _agDiasGrilla(primero, fijo) {
+    const desfase = (primero.getDay() + 6) % 7;
+    const diasMes = new Date(primero.getFullYear(), primero.getMonth() + 1, 0).getDate();
+    const total = fijo ? 42 : Math.ceil((desfase + diasMes) / 7) * 7;
+    return Array.from({ length: total }, (_, i) =>
+        new Date(primero.getFullYear(), primero.getMonth(), 1 - desfase + i));
+}
+
+function _agMapa(items) {
+    const m = {};
+    items.forEach(it => { (m[it.fecha] = m[it.fecha] || []).push(it); });
+    return m;
+}
+
+async function _agFetch(tipo, dias) {
+    const desde = _agIso(dias[0]), hasta = _agIso(dias[dias.length - 1]);
+    const data = await _profLlamar(`${API}${_AG_TIPOS[tipo].url}?desde=${desde}&hasta=${hasta}`);
+    return Array.isArray(data) ? data : [];
+}
+
+function _agToast(texto) {
+    let t = document.getElementById('ag-toast');
+    if (!t) {
+        t = document.createElement('div');
+        t.id = 'ag-toast';
+        t.className = 'ag-toast';
+        t.setAttribute('role', 'status');
+        document.body.appendChild(t);
+    }
+    t.textContent = texto;
+    t.classList.remove('on');
+    void t.offsetWidth;                       // reinicia la animación si ya estaba visible
+    t.classList.add('on');
+    clearTimeout(_agToast._t);
+    _agToast._t = setTimeout(() => t.classList.remove('on'), 3400);
+}
+
+function _agMsg(texto) {
+    const m = document.getElementById('ag-msg');
+    if (m) m.textContent = texto || '';
+}
+
+// ══ INICIO: dos vistas previas ══
+function iniciarAgenda() {
+    cerrarAgendaVista(true);
+    _agCargarPrevias();
+}
+
+function _agHtmlMini(primero, dias, items) {
+    const mapa = _agMapa(items);
+    const mes = primero.getMonth();
+    const cab = ['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<span class="ag-mini-dow">${d}</span>`).join('');
+    const hoy = _agHoy();
+    const celdas = dias.map(d => {
+        if (d.getMonth() !== mes) return '<span class="ag-mini-dia ag-mini-fuera"></span>';
+        const iso = _agIso(d);
+        const it = mapa[iso];
+        return `<span class="ag-mini-dia${it ? ' ag-' + it[0].color : ''}${iso === hoy ? ' ag-mini-hoy' : ''}">${d.getDate()}</span>`;
+    }).join('');
+    return `<div class="ag-mini-mes">${_agCap(_AG_MESES[mes])} ${primero.getFullYear()}</div>
+            <div class="ag-mini-grid">${cab}${celdas}</div>`;
+}
+
+async function _agCargarPrevias() {
+    const h = new Date();
+    const primero = new Date(h.getFullYear(), h.getMonth(), 1);
+    const dias = _agDiasGrilla(primero, false);
+    const prefijo = `${primero.getFullYear()}-${_agPad(primero.getMonth() + 1)}`;
+    await Promise.all(Object.keys(_AG_TIPOS).map(async tipo => {
+        const cont = document.getElementById('ag-mini-' + tipo);
+        const cant = document.getElementById('ag-cant-' + tipo);
+        if (!cont) return;
+        try {
+            const items = await _agFetch(tipo, dias);
+            cont.innerHTML = _agHtmlMini(primero, dias, items);
+            const n = items.filter(i => i.fecha.startsWith(prefijo)).length;
+            const unidad = tipo === 'privada' ? ['fecha guardada', 'fechas guardadas'] : ['aviso enviado', 'avisos enviados'];
+            cant.textContent = n === 0 ? `Sin ${unidad[1]} este mes` : `${n} ${n === 1 ? unidad[0] : unidad[1]} este mes`;
+        } catch (e) {
+            cont.innerHTML = '<p class="ag-mini-error">No se pudo cargar la vista previa.</p>';
+            cant.textContent = '—';
+        }
+    }));
+}
+
+// ══ CALENDARIO ══
+async function abrirAgenda(tipo) {
+    _ag = _agEstadoNuevo();
+    _ag.tipo = tipo;
+    const h = new Date();
+    _ag.mes = new Date(h.getFullYear(), h.getMonth(), 1);
+    document.getElementById('ag-inicio').style.display = 'none';
+    document.getElementById('ag-vista').style.display = 'block';
+    document.getElementById('ag-vista-titulo').textContent = _AG_TIPOS[tipo].titulo;
+    document.getElementById('ag-vista-sub').textContent = tipo === 'privada' ? 'Solo la ves vos' : 'Se envían a los docentes';
+    _agRenderFiltros();
+    _agRenderLado();
+    _agRenderCal();
+    await _agRecargar();
+}
+
+function cerrarAgendaVista(silencioso) {
+    agCerrarPanel();
+    document.getElementById('ag-vista').style.display = 'none';
+    document.getElementById('ag-inicio').style.display = 'block';
+    _ag = _agEstadoNuevo();
+    if (!silencioso) _agCargarPrevias();
+}
+
+async function _agRecargar() {
+    const seq = ++_ag.seq;
+    const dias = _agDiasGrilla(_ag.mes, true);
+    _agRenderCal();                            // el mes elegido se ve al instante; los datos se completan al llegar
+    let items = [], error = false;
+    try { items = await _agFetch(_ag.tipo, dias); }
+    catch (e) { error = true; }
+    if (seq !== _ag.seq) return;               // llegó una respuesta más nueva
+    _ag.items = items;
+    _ag.error = error;
+    _agRenderCal();
+}
+
+function _agRenderFiltros() {
+    const cont = document.getElementById('ag-filtros');
+    if (!cont) return;
+    cont.innerHTML =
+        `<button type="button" class="ag-filtro-todos${_ag.filtro ? '' : ' on'}" onclick="agFiltrar(null)">Todos</button>` +
+        _AG_COLORES.map(c =>
+            `<button type="button" class="ag-sw ag-sw-mini ag-${c.id}${_ag.filtro === c.id ? ' on' : ''}"
+                     onclick="agFiltrar('${c.id}')" title="${c.nombre}" aria-label="Ver solo ${c.nombre}"
+                     aria-pressed="${_ag.filtro === c.id}"></button>`).join('');
+}
+
+function agFiltrar(id) {
+    _ag.filtro = (_ag.filtro === id) ? null : id;
+    _agRenderFiltros();
+    _agRenderCal();
+}
+
+function _agRenderCal() {
+    const cont = document.getElementById('ag-cal');
+    if (!cont || !_ag.mes) return;
+    const dias = _agDiasGrilla(_ag.mes, true);
+    const mes = _ag.mes.getMonth();
+    const hoy = _agHoy();
+    const visibles = _ag.items.filter(it => !_ag.filtro || it.color === _ag.filtro);
+    const mapa = _agMapa(visibles);
+
+    document.getElementById('ag-mes-titulo').textContent = `${_agCap(_AG_MESES[mes])} ${_ag.mes.getFullYear()}`;
+
+    const cab = _AG_DIAS.map(d => `<span class="ag-dow">${d.slice(0, 3)}</span>`).join('');
+    const celdas = dias.map(d => {
+        const iso = _agIso(d);
+        const its = mapa[iso] || [];
+        const chips = its.slice(0, 2).map(it =>
+            `<span class="ag-chip ag-${it.color}" title="${_agAttr(it.titulo)}">${_motEsc(it.titulo)}</span>`).join('');
+        const mas = its.length > 2 ? `<span class="ag-mas">+${its.length - 2}</span>` : '';
+        const etiqueta = `${d.getDate()} de ${_AG_MESES[d.getMonth()]}${its.length ? `, ${its.length} ${its.length === 1 ? 'elemento' : 'elementos'}` : ''}`;
+        const clases = ['ag-dia'];
+        if (d.getMonth() !== mes) clases.push('ag-fuera');
+        if (iso === hoy) clases.push('ag-hoy');
+        if (iso === _ag.sel) clases.push('ag-sel');
+        return `<button type="button" class="${clases.join(' ')}" data-fecha="${iso}" aria-label="${etiqueta}"
+                        onclick="seleccionarFecha('${iso}')">
+                    <span class="ag-dia-num">${d.getDate()}</span>${chips}${mas}
+                </button>`;
+    }).join('');
+
+    cont.innerHTML = `<div class="ag-dows">${cab}</div><div class="ag-celdas">${celdas}</div>` +
+        (_ag.error ? '<p class="ag-error" role="alert">No se pudo conectar con el servidor. Revisá que esté en funcionamiento.</p>' : '');
+}
+
+function agMes(delta) {
+    agCerrarPanel();
+    _ag.mes = new Date(_ag.mes.getFullYear(), _ag.mes.getMonth() + delta, 1);
+    _agRecargar();
+}
+
+function agHoy() {
+    agCerrarPanel();
+    const h = new Date();
+    _ag.mes = new Date(h.getFullYear(), h.getMonth(), 1);
+    _agRecargar();
+}
+
+// ══ SELECCIÓN DE FECHA: el casillero se destaca y el fondo se desenfoca ══
+async function seleccionarFecha(iso) {
+    if (_ag.sel === iso) { agCerrarPanel(); return; }
+    const d = _agParse(iso);
+    if (d.getMonth() !== _ag.mes.getMonth() || d.getFullYear() !== _ag.mes.getFullYear()) {
+        _ag.mes = new Date(d.getFullYear(), d.getMonth(), 1);
+        await _agRecargar();
+    }
+    _ag.sel = iso;
+    _ag.itemId = null;
+    _ag.paso = 'form';
+    _ag.borrador = null;
+    _ag.detalle = null;
+    _agAplicarFoco();
+    // Si la fecha ya tiene un solo elemento, se abre directo (editar / ver respuestas)
+    const delDia = _ag.items.filter(i => i.fecha === iso);
+    if (delDia.length === 1) agVerItem(delDia[0].id);
+    else _agRenderLado();
+}
+
+function _agAplicarFoco() {
+    document.querySelectorAll('.ag-dia.ag-sel').forEach(e => e.classList.remove('ag-sel'));
+    if (_ag.sel) {
+        const el = document.querySelector(`.ag-dia[data-fecha="${_ag.sel}"]`);
+        if (el) el.classList.add('ag-sel');
+    }
+    const velo = document.getElementById('ag-velo');
+    if (velo) velo.classList.toggle('ag-velo-on', !!_ag.sel);
+}
+
+function agCerrarPanel() {
+    if (!_ag.sel && !_ag.borrador) { _agAplicarFoco(); return; }
+    _ag.sel = null;
+    _ag.itemId = null;
+    _ag.paso = 'form';
+    _ag.borrador = null;
+    _ag.detalle = null;
+    _agAplicarFoco();
+    _agRenderLado();
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    const modal = document.getElementById('prof-modal');
+    if (modal && modal.style.display !== 'none') return;     // primero se cierra el modal
+    if (_ag.sel) agCerrarPanel();
+});
+
+// El panel flota junto al casillero tocado: a la derecha si entra, si no a la izquierda
+function _agPosicionarLado() {
+    const lado = document.getElementById('ag-lado');
+    if (!lado || !_ag.sel) return;
+    if (window.innerWidth <= 900) {                  // en pantallas chicas es una hoja inferior (CSS)
+        lado.style.left = lado.style.top = lado.style.width = '';
+        return;
+    }
+    const celda = document.querySelector('.ag-dia.ag-sel');
+    if (!celda) return;
+    const r = celda.getBoundingClientRect();
+    const ancho = Math.min(380, window.innerWidth - 24);
+    const alto = lado.offsetHeight;
+    const hueco = 22, margen = 12;
+    let left = r.right + hueco;
+    if (left + ancho > window.innerWidth - margen) left = r.left - hueco - ancho;
+    left = Math.max(margen, Math.min(left, window.innerWidth - ancho - margen));
+    let top = r.top + r.height / 2 - alto / 2;
+    top = Math.max(margen, Math.min(top, window.innerHeight - alto - margen));
+    lado.style.left = left + 'px';
+    lado.style.top = top + 'px';
+    lado.style.width = ancho + 'px';
+}
+window.addEventListener('resize', _agPosicionarLado);
+window.addEventListener('scroll', _agPosicionarLado, { passive: true });
+
+// ══ PANEL DE LA DERECHA ══
+function _agFechaLarga(iso) {
+    const d = _agParse(iso);
+    return {
+        dia: _agCap(`${_AG_DIAS[(d.getDay() + 6) % 7]} ${d.getDate()} de ${_AG_MESES[d.getMonth()]}`),
+        anio: d.getFullYear()
+    };
+}
+
+function _agItemAbierto() {
+    return _ag.items.find(i => i.id === _ag.itemId) || null;
+}
+
+function _agBase() {
+    if (_ag.borrador) return _ag.borrador;
+    const it = _ag.tipo === 'privada' ? _agItemAbierto() : null;
+    return it
+        ? { titulo: it.titulo, descripcion: it.descripcion || '', color: it.color }
+        : { titulo: '', descripcion: '', color: 'c3' };
+}
+
+function _agFormValores() {
+    const t = document.getElementById('ag-f-titulo');
+    const d = document.getElementById('ag-f-desc');
+    const sel = document.querySelector('.ag-colores .ag-sw.on');
+    return {
+        titulo: t ? t.value.trim() : '',
+        descripcion: d ? d.value.trim() : '',
+        color: sel ? sel.dataset.color : 'c3'
+    };
+}
+
+function _agRenderLado() {
+    const lado = document.getElementById('ag-lado');
+    if (!lado) return;
+    if (!_ag.sel) {
+        // Sin fecha tocada no se muestra nada: el calendario ocupa todo el ancho
+        lado.classList.remove('ag-lado-activo');
+        lado.innerHTML = '';
+        lado.style.left = lado.style.top = lado.style.width = '';
+        return;
+    }
+    lado.classList.add('ag-lado-activo');
+    const f = _agFechaLarga(_ag.sel);
+    const cabecera = `
+        <div class="ag-lado-head">
+            <div><span class="ag-lado-fecha">${f.dia}</span><span class="ag-lado-anio">${f.anio}</span></div>
+            <button type="button" class="ag-cerrar" onclick="agCerrarPanel()" aria-label="Cerrar">✕</button>
+        </div>`;
+    let cuerpo = '';
+    if (_ag.paso === 'destinatarios') cuerpo = _agHtmlDestinatarios();
+    else if (_ag.paso === 'detalle')  cuerpo = _agHtmlDetalle();
+    else                              cuerpo = _agHtmlForm();
+    lado.innerHTML = cabecera + cuerpo;
+    _agPosicionarLado();
+    if (!_agObserva.on && typeof ResizeObserver !== 'undefined') {
+        // si el panel crece (aparecen la descripción, los colores, la lista de docentes…) se reubica
+        _agObserva.on = true;
+        new ResizeObserver(() => _agPosicionarLado()).observe(lado);
+    }
+    if (_ag.paso === 'form') {
+        const t = document.getElementById('ag-f-titulo');
+        if (t && !t.value) setTimeout(() => t.focus(), 60);
+    }
+    if (_ag.paso === 'destinatarios') _agPintarDocs();
+}
+
+function _agHtmlExistentes() {
+    const delDia = _ag.items.filter(i => i.fecha === _ag.sel);
+    if (!delDia.length) return '';
+    const enAvisos = _ag.tipo === 'avisos';
+    return `
+        <div class="ag-existentes">
+            <span class="ag-label">En esta fecha</span>
+            ${delDia.map(it => `
+                <button type="button" class="ag-ex${it.id === _ag.itemId ? ' on' : ''}" onclick="agVerItem(${it.id})">
+                    <i class="ag-dot ag-${it.color}"></i>
+                    <span class="ag-ex-tit">${_motEsc(it.titulo)}</span>
+                    ${enAvisos ? `<small class="ag-ex-meta">${it.van + it.no_van} de ${it.total} respondieron</small>` : ''}
+                </button>`).join('')}
+            ${(!enAvisos && _ag.itemId) ? '<button type="button" class="ag-link" onclick="agNuevoItem()">+ Agregar otra fecha</button>' : ''}
+        </div>`;
+}
+
+function _agHtmlForm() {
+    const base = _agBase();
+    const enAvisos = _ag.tipo === 'avisos';
+    const visible = base.titulo.trim() ? ' ag-visible' : '';
+    const editando = !enAvisos && _ag.itemId;
+    // "Mi agenda" es privada: solo se guarda. Enviar a docentes existe únicamente en "Avisos a docentes".
+    const botones = enAvisos
+        ? '<button type="button" class="btn-curso-mini activo" onclick="agIrADestinatarios()">Enviar a docentes</button>'
+        : '<button type="button" class="btn-curso-mini activo" id="ag-btn-guardar" onclick="agGuardarFecha()">Guardar fecha</button>';
+    return `
+        ${_agHtmlExistentes()}
+        <label class="ag-pregunta" for="ag-f-titulo">${enAvisos ? '¿Qué querés avisar a los docentes?' : '¿Qué querés recordar en esta fecha?'}</label>
+        <input type="text" id="ag-f-titulo" class="prof-input" maxlength="150" autocomplete="off"
+               placeholder="${enAvisos ? 'Ej.: Reunión de profesores' : 'Ej.: Entregar el informe'}"
+               value="${_agAttr(base.titulo)}" oninput="agTituloInput()">
+        <div class="ag-resto${visible}" id="ag-resto">
+            <label class="ag-pregunta" for="ag-f-desc">Descripción <span class="ag-opc">(opcional)</span></label>
+            <textarea id="ag-f-desc" class="prof-input ag-textarea" maxlength="1000" rows="4"
+                      placeholder="Contá los detalles: hora, lugar, qué hay que llevar…">${_motEsc(base.descripcion)}</textarea>
+            <div class="ag-botones ag-botones-uno">${botones}</div>
+            <span class="ag-label">Elegí un color</span>
+            <div class="ag-colores" role="group" aria-label="Color de la fecha">
+                ${_AG_COLORES.map(c => `
+                    <button type="button" class="ag-sw ag-${c.id}${c.id === base.color ? ' on' : ''}" data-color="${c.id}"
+                            onclick="agElegirColor('${c.id}')" title="${c.nombre}" aria-label="${c.nombre}"></button>`).join('')}
+            </div>
+            ${editando ? '<button type="button" class="ag-link ag-link-peligro" onclick="agEliminarItem()">Eliminar esta fecha</button>' : ''}
+        </div>
+        <p class="ag-msg" id="ag-msg" role="alert"></p>`;
+}
+
+// Las preguntas van apareciendo a medida que se completa la anterior
+function agTituloInput() {
+    const t = document.getElementById('ag-f-titulo');
+    const r = document.getElementById('ag-resto');
+    if (!t || !r) return;
+    r.classList.toggle('ag-visible', t.value.trim().length > 0);
+    _agMsg('');
+}
+
+function agElegirColor(id) {
+    document.querySelectorAll('.ag-colores .ag-sw').forEach(b => b.classList.toggle('on', b.dataset.color === id));
+}
+
+function agNuevoItem() {
+    _ag.itemId = null;
+    _ag.borrador = null;
+    _agRenderLado();
+}
+
+async function agVerItem(id) {
+    _ag.itemId = id;
+    _ag.borrador = null;
+    if (_ag.tipo === 'privada') {
+        _ag.paso = 'form';
+        _agRenderLado();
+        return;
+    }
+    _ag.paso = 'detalle';
+    _ag.detalle = null;
+    _agRenderLado();
+    try {
+        const d = await _profLlamar(`${API}/dir/agenda/avisos/${id}`);
+        if (_ag.itemId !== id || _ag.paso !== 'detalle') return;
+        _ag.detalle = d;
+    } catch (e) {
+        if (_ag.itemId !== id) return;
+        _ag.detalle = { error: e.message };
+    }
+    _agRenderLado();
+}
+
+// Si hay un filtro de color activo y lo recién guardado es de otro color, se muestran todas
+// (si no, la fecha se guardaría pero quedaría oculta)
+function _agMostrarColor(color) {
+    if (_ag.filtro && _ag.filtro !== color) {
+        _ag.filtro = null;
+        _agRenderFiltros();
+    }
+}
+
+// ── Guardar en el calendario propio ──
+async function agGuardarFecha() {
+    const v = _agFormValores();
+    if (!v.titulo) { _agMsg('Escribí un título para la fecha.'); return; }
+    const btn = document.getElementById('ag-btn-guardar');
+    if (btn) btn.disabled = true;
+    try {
+        const cuerpo = JSON.stringify({ fecha: _ag.sel, titulo: v.titulo, descripcion: v.descripcion, color: v.color });
+        const url = _ag.itemId ? `${API}/dir/agenda/fechas/${_ag.itemId}` : `${API}/dir/agenda/fechas`;
+        await _profLlamar(url, { method: _ag.itemId ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json' }, body: cuerpo });
+        const eraNueva = !_ag.itemId;
+        _agMostrarColor(v.color);
+        agCerrarPanel();
+        _agToast(eraNueva ? 'Fecha guardada en tu agenda' : 'Fecha actualizada');
+        await _agRecargar();
+    } catch (e) {
+        _agMsg(e.message || 'No se pudo guardar la fecha.');
+        if (btn) btn.disabled = false;
+    }
+}
+
+function agEliminarItem() {
+    const it = _agItemAbierto();
+    if (!it) return;
+    _abrirModalProf({
+        titulo: 'Eliminar fecha',
+        sub: it.titulo,
+        cuerpo: '<p class="prof-modal-texto">¿Seguro que querés eliminar esta fecha de tu agenda?</p>',
+        okTexto: 'Eliminar',
+        peligro: true,
+        onOk: async () => {
+            await _profLlamar(`${API}/dir/agenda/fechas/${it.id}`, { method: 'DELETE' });
+            agCerrarPanel();
+            _agToast('Fecha eliminada');
+            await _agRecargar();
+        }
+    });
+}
+
+// ── Enviar a docentes: primero se elige a quién ──
+async function agIrADestinatarios() {
+    const v = _agFormValores();
+    if (!v.titulo) { _agMsg('Escribí un título para el aviso.'); return; }
+    if (_ag.sel < _agHoy()) { _agMsg('Para avisar a los docentes elegí una fecha de hoy en adelante.'); return; }
+    _ag.borrador = v;
+    _ag.paso = 'destinatarios';
+    _ag.destino = 'todos';
+    _ag.docSel = new Set();
+    _ag.docBusca = '';
+    _agRenderLado();
+    if (!_ag.docs) {
+        try {
+            const lista = await _profLlamar(`${API}/dir/profesores-lista`);
+            _ag.docs = Array.isArray(lista) ? lista : [];
+        } catch (e) {
+            _ag.docs = [];
+            _agMsg('No se pudo traer la lista de docentes.');
+        }
+        if (_ag.paso === 'destinatarios') _agRenderLado();
+    }
+}
+
+function _agHtmlDestinatarios() {
+    const b = _ag.borrador || { titulo: '', color: 'c3' };
+    const total = _ag.docs ? _ag.docs.length : 0;
+    return `
+        <div class="ag-resumen">
+            <i class="ag-dot ag-${b.color}"></i>
+            <span class="ag-resumen-tit">${_motEsc(b.titulo)}</span>
+        </div>
+        <p class="ag-pregunta">¿A quién se lo enviamos?</p>
+        <div class="ag-destinos" role="group" aria-label="Destinatarios">
+            <button type="button" class="ag-destino${_ag.destino === 'todos' ? ' on' : ''}" onclick="agDestino('todos')">
+                <strong>Todos los docentes</strong><small>${total ? total + ' en total' : 'Cargando…'}</small>
+            </button>
+            <button type="button" class="ag-destino${_ag.destino === 'elegir' ? ' on' : ''}" onclick="agDestino('elegir')">
+                <strong>Elegir docentes</strong><small>Uno o varios</small>
+            </button>
+        </div>
+        <div class="ag-docs" id="ag-docs" style="display:${_ag.destino === 'elegir' ? 'block' : 'none'};">
+            <input type="text" id="ag-docs-buscar" class="prof-input" placeholder="Buscar docente…" autocomplete="off"
+                   value="${_agAttr(_ag.docBusca)}" oninput="agBuscarDocs(this.value)">
+            <div class="ag-docs-barra">
+                <span id="ag-docs-cant"></span>
+                <button type="button" class="ag-link" onclick="agTodosDocs()">Seleccionar todos</button>
+            </div>
+            <div class="ag-docs-lista" id="ag-docs-lista"></div>
+        </div>
+        <div class="ag-botones">
+            <button type="button" class="btn-curso-mini" onclick="agVolverForm()">← Volver</button>
+            <button type="button" class="btn-curso-mini activo" id="ag-btn-enviar" onclick="agEnviar()">Enviar</button>
+        </div>
+        <p class="ag-msg" id="ag-msg" role="alert"></p>`;
+}
+
+function agDestino(que) {
+    _ag.destino = que;
+    document.querySelectorAll('.ag-destino').forEach((b, i) => b.classList.toggle('on', (i === 0) === (que === 'todos')));
+    const cont = document.getElementById('ag-docs');
+    if (cont) cont.style.display = que === 'elegir' ? 'block' : 'none';
+    _agMsg('');
+}
+
+function _agPintarDocs() {
+    const lista = document.getElementById('ag-docs-lista');
+    if (!lista) return;
+    const q = _normBusqueda(_ag.docBusca);
+    const docs = (_ag.docs || []).filter(d => !q || _normBusqueda(`${d.apellido} ${d.nombre}`).includes(q));
+    lista.innerHTML = docs.length
+        ? docs.map(d => `
+            <label class="ag-doc">
+                <input type="checkbox" value="${d.id_profesor}" ${_ag.docSel.has(d.id_profesor) ? 'checked' : ''}
+                       onchange="agToggleDoc(${d.id_profesor}, this.checked)">
+                <span>${_motEsc(d.apellido)}, ${_motEsc(d.nombre)}</span>
+            </label>`).join('')
+        : '<p class="ag-docs-vacio">No hay docentes que coincidan.</p>';
+    _agContarDocs();
+}
+
+function _normBusqueda(t) {
+    return String(t || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+}
+
+function _agContarDocs() {
+    const c = document.getElementById('ag-docs-cant');
+    if (c) c.textContent = `${_ag.docSel.size} ${_ag.docSel.size === 1 ? 'seleccionado' : 'seleccionados'}`;
+}
+
+function agBuscarDocs(txt) { _ag.docBusca = txt; _agPintarDocs(); }
+
+function agToggleDoc(id, on) {
+    if (on) _ag.docSel.add(id); else _ag.docSel.delete(id);
+    _agContarDocs();
+    _agMsg('');
+}
+
+function agTodosDocs() {
+    const q = _normBusqueda(_ag.docBusca);
+    (_ag.docs || []).filter(d => !q || _normBusqueda(`${d.apellido} ${d.nombre}`).includes(q))
+        .forEach(d => _ag.docSel.add(d.id_profesor));
+    _agPintarDocs();
+}
+
+function agVolverForm() {
+    _ag.paso = 'form';
+    _agRenderLado();
+}
+
+async function agEnviar() {
+    if (_ag.enviando) return;
+    const b = _ag.borrador;
+    if (!b) return;
+    const docentes = _ag.destino === 'todos' ? 'todos' : [..._ag.docSel];
+    if (docentes !== 'todos' && !docentes.length) { _agMsg('Elegí al menos un docente.'); return; }
+    _ag.enviando = true;
+    const btn = document.getElementById('ag-btn-enviar');
+    if (btn) btn.disabled = true;
+    try {
+        const r = await _profLlamar(`${API}/dir/agenda/avisos`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ fecha: _ag.sel, titulo: b.titulo, descripcion: b.descripcion, color: b.color, docentes })
+        });
+        const n = r.enviados || 0;
+        _agMostrarColor(b.color);
+        agCerrarPanel();
+        _agToast(`Aviso enviado a ${n} ${n === 1 ? 'docente' : 'docentes'}`);
+        await _agRecargar();
+    } catch (e) {
+        _agMsg(e.message || 'No se pudo enviar el aviso.');
+        if (btn) btn.disabled = false;
+    } finally {
+        _ag.enviando = false;
+    }
+}
+
+// ── Detalle de un aviso enviado: quién se anotó y quién no ──
+function _agHtmlDetalle() {
+    const it = _ag.items.find(i => i.id === _ag.itemId);
+    const d = _ag.detalle;
+    const volver = '<button type="button" class="ag-link ag-volver" onclick="agVolverLista()">← Volver a esta fecha</button>';
+    if (!d) return `${volver}<p class="ag-docs-vacio">Cargando respuestas…</p>`;
+    if (d.error) return `${volver}<p class="ag-msg" role="alert">${_motEsc(d.error)}</p>`;
+
+    const grupo = (clave, titulo, clase) => {
+        const gente = d.docentes.filter(x => x.asistencia === clave);
+        return `
+            <div class="ag-grupo">
+                <div class="ag-grupo-tit"><span class="ag-estado ${clase}">${titulo}</span><b>${gente.length}</b></div>
+                ${gente.length
+                    ? `<ul class="ag-grupo-lista">${gente.map(x => `<li>${_motEsc(x.apellido)}, ${_motEsc(x.nombre)}</li>`).join('')}</ul>`
+                    : '<p class="ag-grupo-vacio">Nadie por ahora.</p>'}
+            </div>`;
+    };
+    return `
+        ${volver}
+        <div class="ag-det-cab">
+            <i class="ag-dot ag-${d.color}"></i>
+            <h4 class="ag-det-tit">${_motEsc(d.titulo)}</h4>
+        </div>
+        ${d.descripcion ? `<p class="ag-det-desc">${_motEsc(d.descripcion)}</p>` : ''}
+        <p class="ag-det-para">${d.para_todos ? 'Enviado a todos los docentes' : `Enviado a ${d.docentes.length} ${d.docentes.length === 1 ? 'docente' : 'docentes'}`}</p>
+        <div class="ag-grupos">
+            ${grupo('si', 'Van', 'ag-est-si')}
+            ${grupo('no', 'No van', 'ag-est-no')}
+            ${grupo('pendiente', 'Sin responder', 'ag-est-pend')}
+        </div>
+        <button type="button" class="ag-link ag-link-peligro" onclick="agEliminarAviso(${d.id})">Eliminar aviso</button>`;
+}
+
+function agVolverLista() {
+    _ag.paso = 'form';
+    _ag.itemId = null;
+    _ag.detalle = null;
+    _agRenderLado();
+}
+
+function agEliminarAviso(id) {
+    const it = _ag.items.find(i => i.id === id);
+    _abrirModalProf({
+        titulo: 'Eliminar aviso',
+        sub: it ? it.titulo : '',
+        cuerpo: '<p class="prof-modal-texto">¿Seguro que querés eliminar este aviso? Los docentes dejan de verlo y se pierden sus respuestas.</p>',
+        okTexto: 'Eliminar',
+        peligro: true,
+        onOk: async () => {
+            await _profLlamar(`${API}/dir/agenda/avisos/${id}`, { method: 'DELETE' });
+            agCerrarPanel();
+            _agToast('Aviso eliminado');
+            await _agRecargar();
+        }
+    });
+}

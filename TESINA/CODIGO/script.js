@@ -146,14 +146,62 @@ window.addEventListener('scroll', () => {
 
 
 // ══════════════════════════════════════════════
-//  FORMULARIO
+//  FORMULARIO — envío por el servidor Flask (mismo estilo que los OTP)
 // ══════════════════════════════════════════════
-document.querySelector('.krono-form').addEventListener('submit', function (e) {
+// Dirección del servidor Flask (app.py). Es la misma que usan las otras páginas.
+const API_URL = 'http://127.0.0.1:5000';
+
+document.querySelector('.krono-form').addEventListener('submit', async function (e) {
     e.preventDefault();
-    const nombre = document.getElementById('nombre').value;
-    const email  = document.getElementById('email').value;
-    alert(`¡Genial ${nombre}! Tu consulta desde ${email} fue enviada. ¡Suerte!`);
-    this.reset();
+
+    const form     = this;
+    const boton    = form.querySelector('.btn-enviar');
+    const nombre   = document.getElementById('nombre').value.trim();
+    const email    = document.getElementById('email').value.trim();
+    const consulta = document.getElementById('consulta').value.trim();
+
+    // Mensaje de estado (se crea una sola vez, debajo del botón)
+    let estado = form.querySelector('.form-estado');
+    if (!estado) {
+        estado = document.createElement('p');
+        estado.className = 'form-estado';
+        estado.setAttribute('role', 'status');
+        estado.setAttribute('aria-live', 'polite');
+        estado.style.cssText = 'margin-top:12px;font-weight:600;text-align:center;';
+        form.appendChild(estado);
+    }
+
+    const textoOriginal = boton.textContent;
+    boton.disabled = true;
+    boton.textContent = 'Enviando...';
+    clearTimeout(form._timerEstado);   // cancela un borrado pendiente de un envío anterior
+    estado.textContent = '';
+
+    try {
+        const resp = await fetch(API_URL + '/enviar-consulta', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nombre, email, consulta })
+        });
+        const datos = await resp.json().catch(() => ({}));
+
+        if (resp.ok) {
+            estado.style.color = '#2e9e5b';
+            estado.textContent = `¡Gracias ${nombre}! Tu consulta fue enviada, te responderemos pronto.`;
+            form.reset();
+            // El mensaje de éxito desaparece solo a los 2 segundos
+            form._timerEstado = setTimeout(() => { estado.textContent = ''; }, 2000);
+        } else {
+            estado.style.color = '#d64545';
+            estado.textContent = datos.error || 'No pudimos enviar tu consulta. Intentá de nuevo.';
+        }
+    } catch (err) {
+        estado.style.color = '#d64545';
+        estado.textContent = 'No pudimos conectar con el servidor. Revisá que esté encendido e intentá de nuevo.';
+    } finally {
+        boton.disabled = false;
+        boton.textContent = textoOriginal;
+    }
 });
 
 

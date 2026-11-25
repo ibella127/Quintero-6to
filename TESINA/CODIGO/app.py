@@ -42,8 +42,8 @@ DB = {
 }
 
 # ── CONFIG CORREO ──────────────────────────────────────────────
-EMAIL_REMITENTE = "ummaleyria09@gmail.com"
-EMAIL_APP_PASSWORD = "paew fcqi xmik mgng"  # ── Modificar cuando la web se trabe
+EMAIL_REMITENTE = "kronosystemoficial@gmail.com"
+EMAIL_APP_PASSWORD = "vjfv qljq jmgj asia"  # ── Modificar cuando la web se trabe
 
 otp_store = {}
 otp_store_staff = {}  # OTP de Profesores, separado del de alumnos
@@ -188,6 +188,179 @@ def enviar_otp(email, codigo, nombre):
     except Exception as e:
         print(f"❌ ERROR DE GMAIL: {e}")
         return False
+
+
+# ═══════════════════════════════════════════════════════════════
+#  CONSULTAS DE LA WEB (formulario de contacto de Index.html)
+#  Se envían por el mismo Gmail que los OTP, con el mismo estilo.
+# ═══════════════════════════════════════════════════════════════
+import html as _html
+import re as _re
+
+EMAIL_CONSULTAS = EMAIL_REMITENTE   # ← mail donde querés RECIBIR las consultas (podés cambiarlo)
+_ultimo_envio_consulta = {}         # anti-spam simple: ip → momento del último envío
+
+
+def enviar_consulta(nombre, email_contacto, consulta):
+    nombre_h   = _html.escape(nombre)
+    email_h    = _html.escape(email_contacto)
+    consulta_h = _html.escape(consulta).replace("\r\n", "\n").replace("\n", "<br>")
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"]  = f"✉️ Nueva consulta de {nombre} — KRONO"
+    msg["From"]     = EMAIL_REMITENTE
+    msg["To"]       = EMAIL_CONSULTAS
+    msg["Reply-To"] = email_contacto   # al tocar "Responder" le contestás a quien escribió
+
+    texto = (f"Nueva consulta desde la web de KRONO\n\n"
+             f"Nombre: {nombre}\nCorreo: {email_contacto}\n\n{consulta}\n")
+
+    html = f"""
+    <!DOCTYPE html>
+    <html lang="es">
+    <head><meta charset="UTF-8"></head>
+    <body style="margin:0;padding:0;background:#0c1a2e;font-family:'Georgia',serif;">
+
+      <table width="100%" cellpadding="0" cellspacing="0" style="background:#0c1a2e;padding:40px 0;">
+        <tr>
+          <td align="center">
+            <table width="520" cellpadding="0" cellspacing="0"
+                   style="background:#0c1a2e;border:1.5px solid rgba(75,163,217,0.25);
+                          border-radius:20px;overflow:hidden;max-width:520px;width:100%;">
+
+              <!-- HEADER -->
+              <tr>
+                <td style="padding:28px 36px 20px;border-bottom:1px solid rgba(75,163,217,0.15);">
+                  <p style="margin:0;font-family:'Georgia',serif;font-size:26px;
+                             font-weight:700;color:#c8dff0;letter-spacing:4px;
+                             text-transform:uppercase;">KRONO</p>
+                  <p style="margin:4px 0 0;font-size:11px;color:#4a7a9b;
+                             letter-spacing:0.15em;text-transform:uppercase;
+                             font-family:Arial,sans-serif;">Sistema de asistencia escolar</p>
+                </td>
+              </tr>
+
+              <!-- TÍTULO -->
+              <tr>
+                <td style="padding:32px 36px 8px;">
+                  <h1 style="margin:0;font-family:'Georgia',serif;font-size:28px;
+                              font-weight:700;color:#c8dff0;">
+                    Nueva consulta
+                  </h1>
+                  <p style="margin:12px 0 0;font-size:15px;color:#7aa8c8;
+                             font-family:Arial,sans-serif;line-height:1.5;">
+                    <strong style="color:#a8d4f5;">{nombre_h}</strong> escribió desde la web:
+                  </p>
+                </td>
+              </tr>
+
+              <!-- CONSULTA -->
+              <tr>
+                <td style="padding:24px 36px;">
+                  <div style="background:#091422;border:1.5px solid rgba(75,163,217,0.3);
+                               border-radius:14px;padding:24px;text-align:left;">
+                    <span style="font-family:Arial,sans-serif;font-size:16px;
+                                 color:#c8dff0;display:block;line-height:1.6;">
+                      {consulta_h}
+                    </span>
+                  </div>
+                </td>
+              </tr>
+
+              <!-- TRES PUNTOS + CONTACTO -->
+              <tr>
+                <td style="padding:0 36px 8px;">
+                  <table cellpadding="0" cellspacing="0">
+                    <tr>
+                      <td style="padding-right:6px;">
+                        <span style="display:inline-block;width:7px;height:7px;
+                                     border-radius:50%;background:#4ba3d9;"></span>
+                      </td>
+                      <td style="padding-right:6px;">
+                        <span style="display:inline-block;width:7px;height:7px;
+                                     border-radius:50%;background:#4ba3d9;opacity:.6;"></span>
+                      </td>
+                      <td style="padding-right:10px;">
+                        <span style="display:inline-block;width:7px;height:7px;
+                                     border-radius:50%;background:#4ba3d9;opacity:.35;"></span>
+                      </td>
+                      <td>
+                        <span style="font-size:11px;color:#4a7a9b;font-family:Arial,sans-serif;
+                                     letter-spacing:0.1em;text-transform:uppercase;">contacto</span>
+                      </td>
+                    </tr>
+                  </table>
+                </td>
+              </tr>
+
+              <!-- DATOS DE CONTACTO -->
+              <tr>
+                <td style="padding:4px 36px 32px;">
+                  <p style="margin:0;font-size:13px;color:#4a7a9b;
+                             font-family:Arial,sans-serif;line-height:1.8;">
+                    Nombre: <strong style="color:#7aa8c8;">{nombre_h}</strong><br>
+                    Correo: <a href="mailto:{email_h}" style="color:#4ba3d9;text-decoration:none;font-weight:700;">{email_h}</a><br>
+                    Podés responderle directamente a este mensaje.
+                  </p>
+                </td>
+              </tr>
+
+              <!-- FOOTER -->
+              <tr>
+                <td style="padding:16px 36px;border-top:1px solid rgba(75,163,217,0.12);">
+                  <p style="margin:0;font-size:11px;color:#2a4a6a;
+                             font-family:Arial,sans-serif;letter-spacing:0.05em;">
+                    KRONO — Sistema de asistencia escolar
+                  </p>
+                </td>
+              </tr>
+
+            </table>
+          </td>
+        </tr>
+      </table>
+
+    </body>
+    </html>
+    """
+
+    msg.attach(MIMEText(texto, "plain", "utf-8"))
+    msg.attach(MIMEText(html, "html", "utf-8"))
+    try:
+        server = smtplib.SMTP_SSL("smtp.gmail.com", 465)
+        server.login(EMAIL_REMITENTE, EMAIL_APP_PASSWORD)
+        server.sendmail(EMAIL_REMITENTE, EMAIL_CONSULTAS, msg.as_string())
+        server.quit()
+        return True
+    except Exception as e:
+        print(f"❌ ERROR DE GMAIL (consulta): {e}")
+        return False
+
+
+@app.route('/enviar-consulta', methods=['POST'])
+def enviar_consulta_web():
+    data     = request.get_json(silent=True) or {}
+    nombre   = " ".join(str(data.get('nombre', '')).split())          # sin saltos de línea ni espacios dobles
+    email    = str(data.get('email', '')).strip()
+    consulta = str(data.get('consulta', '')).strip()
+
+    if not nombre or not email or not consulta:
+        return jsonify({"error": "Completá todos los campos."}), 400
+    if len(nombre) > 100 or len(email) > 150 or len(consulta) > 3000:
+        return jsonify({"error": "Algún campo es demasiado largo."}), 400
+    if not _re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', email):
+        return jsonify({"error": "El correo no es válido."}), 400
+
+    # Anti-spam: un envío cada 30 segundos por dispositivo
+    ip, ahora = request.remote_addr, time.time()
+    if ahora - _ultimo_envio_consulta.get(ip, 0) < 30:
+        return jsonify({"error": "Esperá unos segundos antes de enviar otra consulta."}), 429
+
+    if not enviar_consulta(nombre, email, consulta):
+        return jsonify({"error": "No se pudo enviar el correo."}), 500
+
+    _ultimo_envio_consulta[ip] = ahora
+    return jsonify({"ok": True})
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -3773,7 +3946,377 @@ def dir_libreta_pdf(id_alumno):
         return jsonify({"error": str(e)}), 500
 
 
+# ══ AGENDA — Directivos ↔ Profesores ═══════════════════════════
+# agenda_fechas         → calendario privado de la directiva (solo ella lo ve)
+# agenda_avisos         → avisos enviados a docentes (calendario de avisos)
+# agenda_aviso_docentes → un renglón por docente avisado + su respuesta de asistencia
+#                         asistencia: 'pendiente' | 'si' | 'no'
+AGENDA_COLORES = ('c1', 'c2', 'c3', 'c4', 'c5', 'c6')   # gama de azules (el front les da el tono)
+
+
+def _init_agenda():
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""CREATE TABLE IF NOT EXISTS agenda_fechas (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                fecha       DATE NOT NULL,
+                titulo      VARCHAR(150) NOT NULL,
+                descripcion TEXT DEFAULT NULL,
+                color       VARCHAR(4) NOT NULL DEFAULT 'c3',
+                creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_agenda_fechas_fecha (fecha)
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS agenda_avisos (
+                id          INT AUTO_INCREMENT PRIMARY KEY,
+                fecha       DATE NOT NULL,
+                titulo      VARCHAR(150) NOT NULL,
+                descripcion TEXT DEFAULT NULL,
+                color       VARCHAR(4) NOT NULL DEFAULT 'c3',
+                para_todos  BOOLEAN NOT NULL DEFAULT FALSE,
+                creado_en   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                INDEX idx_agenda_avisos_fecha (fecha)
+            )""")
+            c.execute("""CREATE TABLE IF NOT EXISTS agenda_aviso_docentes (
+                id            INT AUTO_INCREMENT PRIMARY KEY,
+                id_aviso      INT NOT NULL,
+                id_profesor   INT NOT NULL,
+                asistencia    VARCHAR(10) NOT NULL DEFAULT 'pendiente',
+                respondido_en TIMESTAMP NULL DEFAULT NULL,
+                UNIQUE KEY uq_aviso_profesor (id_aviso, id_profesor),
+                FOREIGN KEY (id_aviso)    REFERENCES agenda_avisos(id)          ON DELETE CASCADE,
+                FOREIGN KEY (id_profesor) REFERENCES profesores(id_profesor)    ON DELETE CASCADE
+            )""")
+        conn.commit()
+        print("✅ Tablas de la agenda listas.")
+    finally:
+        conn.close()
+
+
+def _agenda_fecha(txt):
+    """'YYYY-MM-DD' → date, o None si no es una fecha válida."""
+    try:
+        return date.fromisoformat((txt or '').strip())
+    except (ValueError, AttributeError):
+        return None
+
+
+def _agenda_datos(d, exigir_futura=False):
+    """Valida y limpia fecha, título, descripción y color. Devuelve (datos, error)."""
+    f = _agenda_fecha(d.get('fecha'))
+    if not f:
+        return None, 'La fecha no es válida.'
+    titulo = (d.get('titulo') or '').strip()
+    if not titulo:
+        return None, 'Escribí un título.'
+    if len(titulo) > 150:
+        return None, 'El título puede tener hasta 150 caracteres.'
+    desc = (d.get('descripcion') or '').strip()
+    if len(desc) > 1000:
+        return None, 'La descripción puede tener hasta 1000 caracteres.'
+    color = d.get('color') if d.get('color') in AGENDA_COLORES else 'c3'
+    if exigir_futura and f < date.today():
+        return None, 'Para avisar a los docentes elegí una fecha de hoy en adelante.'
+    return {'fecha': f, 'titulo': titulo, 'descripcion': desc or None, 'color': color}, None
+
+
+def _agenda_rango():
+    """Lee ?desde=YYYY-MM-DD&hasta=YYYY-MM-DD (máx. ~13 meses). Devuelve (desde, hasta) o (None, None)."""
+    desde = _agenda_fecha(request.args.get('desde'))
+    hasta = _agenda_fecha(request.args.get('hasta'))
+    if not desde or not hasta or hasta < desde or (hasta - desde).days > 400:
+        return None, None
+    return desde, hasta
+
+
+def _agenda_fila(f):
+    f = dict(f)
+    f['fecha'] = f['fecha'].isoformat()
+    return f
+
+
+# ── Calendario privado de la directiva ─────────────────────────
+
+@app.route('/dir/agenda/fechas', methods=['GET'])
+def dir_agenda_fechas():
+    desde, hasta = _agenda_rango()
+    if not desde:
+        return jsonify({"error": "Rango de fechas inválido"}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT id, fecha, titulo, descripcion, color
+                FROM agenda_fechas
+                WHERE fecha BETWEEN %s AND %s
+                ORDER BY fecha, id
+            """, (desde, hasta))
+            return jsonify([_agenda_fila(f) for f in c.fetchall()])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/fechas', methods=['POST'])
+def dir_agenda_crear_fecha():
+    datos, error = _agenda_datos(request.get_json(silent=True) or {})
+    if error:
+        return jsonify({"error": error}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                INSERT INTO agenda_fechas (fecha, titulo, descripcion, color)
+                VALUES (%s, %s, %s, %s)
+            """, (datos['fecha'], datos['titulo'], datos['descripcion'], datos['color']))
+            nuevo = c.lastrowid
+        conn.commit()
+        return jsonify({"ok": True, "id": nuevo})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/fechas/<int:fecha_id>', methods=['PUT'])
+def dir_agenda_editar_fecha(fecha_id):
+    datos, error = _agenda_datos(request.get_json(silent=True) or {})
+    if error:
+        return jsonify({"error": error}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT id FROM agenda_fechas WHERE id = %s", (fecha_id,))
+            if not c.fetchone():
+                return jsonify({"error": "Esa fecha ya no existe"}), 404
+            c.execute("""
+                UPDATE agenda_fechas
+                SET fecha = %s, titulo = %s, descripcion = %s, color = %s
+                WHERE id = %s
+            """, (datos['fecha'], datos['titulo'], datos['descripcion'], datos['color'], fecha_id))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/fechas/<int:fecha_id>', methods=['DELETE'])
+def dir_agenda_eliminar_fecha(fecha_id):
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("DELETE FROM agenda_fechas WHERE id = %s", (fecha_id,))
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ── Avisos a docentes ──────────────────────────────────────────
+
+@app.route('/dir/agenda/avisos', methods=['GET'])
+def dir_agenda_avisos():
+    """Avisos del rango pedido, con cuántos docentes van / no van / no respondieron."""
+    desde, hasta = _agenda_rango()
+    if not desde:
+        return jsonify({"error": "Rango de fechas inválido"}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT a.id, a.fecha, a.titulo, a.descripcion, a.color, a.para_todos,
+                       COUNT(d.id)                                   AS total,
+                       COALESCE(SUM(d.asistencia = 'si'), 0)         AS van,
+                       COALESCE(SUM(d.asistencia = 'no'), 0)         AS no_van,
+                       COALESCE(SUM(d.asistencia = 'pendiente'), 0)  AS pendientes
+                FROM agenda_avisos a
+                LEFT JOIN agenda_aviso_docentes d ON d.id_aviso = a.id
+                WHERE a.fecha BETWEEN %s AND %s
+                GROUP BY a.id, a.fecha, a.titulo, a.descripcion, a.color, a.para_todos
+                ORDER BY a.fecha, a.id
+            """, (desde, hasta))
+            filas = []
+            for f in c.fetchall():
+                f = _agenda_fila(f)
+                for k in ('total', 'van', 'no_van', 'pendientes'):
+                    f[k] = int(f[k] or 0)
+                f['para_todos'] = bool(f['para_todos'])
+                filas.append(f)
+            return jsonify(filas)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/avisos', methods=['POST'])
+def dir_agenda_enviar_aviso():
+    """Crea el aviso y se lo manda a todos los docentes o solo a los elegidos (docentes: 'todos' | [ids])."""
+    d = request.get_json(silent=True) or {}
+    datos, error = _agenda_datos(d, exigir_futura=True)
+    if error:
+        return jsonify({"error": error}), 400
+    destino = d.get('docentes')
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("SELECT id_profesor FROM profesores WHERE es_preceptor = FALSE")
+            validos = {f['id_profesor'] for f in c.fetchall()}
+            if destino == 'todos':
+                ids, para_todos = sorted(validos), True
+            elif isinstance(destino, list):
+                pedidos = {int(i) for i in destino if str(i).isdigit()}
+                ids, para_todos = sorted(pedidos & validos), False
+            else:
+                return jsonify({"error": "Elegí a quién enviarlo"}), 400
+            if not ids:
+                return jsonify({"error": "Elegí al menos un docente."}), 400
+            c.execute("""
+                INSERT INTO agenda_avisos (fecha, titulo, descripcion, color, para_todos)
+                VALUES (%s, %s, %s, %s, %s)
+            """, (datos['fecha'], datos['titulo'], datos['descripcion'], datos['color'], para_todos))
+            id_aviso = c.lastrowid
+            c.executemany(
+                "INSERT INTO agenda_aviso_docentes (id_aviso, id_profesor) VALUES (%s, %s)",
+                [(id_aviso, i) for i in ids])
+        conn.commit()
+        return jsonify({"ok": True, "id": id_aviso, "enviados": len(ids)})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/avisos/<int:id_aviso>', methods=['GET'])
+def dir_agenda_aviso_detalle(id_aviso):
+    """El aviso y la lista de docentes con su respuesta (quién se anotó y quién no)."""
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("""
+                SELECT id, fecha, titulo, descripcion, color, para_todos
+                FROM agenda_avisos WHERE id = %s
+            """, (id_aviso,))
+            aviso = c.fetchone()
+            if not aviso:
+                return jsonify({"error": "Ese aviso ya no existe"}), 404
+            c.execute("""
+                SELECT p.id_profesor, p.nombre, p.apellido, p.gmail,
+                       d.asistencia, d.respondido_en
+                FROM agenda_aviso_docentes d
+                JOIN profesores p ON p.id_profesor = d.id_profesor
+                WHERE d.id_aviso = %s
+                ORDER BY p.apellido, p.nombre
+            """, (id_aviso,))
+            docentes = []
+            for f in c.fetchall():
+                f['respondido_en'] = f['respondido_en'].isoformat(sep=' ') if f['respondido_en'] else None
+                docentes.append(f)
+        aviso = _agenda_fila(aviso)
+        aviso['para_todos'] = bool(aviso['para_todos'])
+        aviso['docentes'] = docentes
+        return jsonify(aviso)
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/dir/agenda/avisos/<int:id_aviso>', methods=['DELETE'])
+def dir_agenda_eliminar_aviso(id_aviso):
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            c.execute("DELETE FROM agenda_avisos WHERE id = %s", (id_aviso,))   # borra también las respuestas (CASCADE)
+        conn.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+# ── Lado del profesor: ver avisos y confirmar asistencia ───────
+
+def _id_profesor_por_gmail(c, gmail):
+    c.execute("SELECT id_profesor FROM profesores WHERE LOWER(gmail) = %s AND es_preceptor = FALSE", (gmail,))
+    fila = c.fetchone()
+    return fila['id_profesor'] if fila else None
+
+
+@app.route('/profesores/agenda', methods=['GET'])
+def profesores_agenda():
+    """Avisos que la dirección le envió a este profesor (de hace 30 días en adelante)."""
+    gmail = (request.args.get('gmail') or '').strip().lower()
+    if not gmail:
+        return jsonify({"error": "Falta el correo"}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            id_prof = _id_profesor_por_gmail(c, gmail)
+            if not id_prof:
+                return jsonify({"error": "Profesor no encontrado"}), 404
+            c.execute("""
+                SELECT a.id, a.fecha, a.titulo, a.descripcion, a.color, d.asistencia
+                FROM agenda_aviso_docentes d
+                JOIN agenda_avisos a ON a.id = d.id_aviso
+                WHERE d.id_profesor = %s AND a.fecha >= %s
+                ORDER BY a.fecha, a.id
+            """, (id_prof, date.today() - timedelta(days=30)))
+            return jsonify([_agenda_fila(f) for f in c.fetchall()])
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
+@app.route('/profesores/agenda/<int:id_aviso>/asistencia', methods=['POST'])
+def profesores_agenda_asistencia(id_aviso):
+    """El profesor marca si va ('si') o no va ('no') a la fecha del aviso. Puede cambiar su respuesta."""
+    d = request.get_json(silent=True) or {}
+    gmail = (d.get('gmail') or '').strip().lower()
+    valor = d.get('asistencia')
+    if not gmail:
+        return jsonify({"error": "Falta el correo"}), 400
+    if valor not in ('si', 'no'):
+        return jsonify({"error": "Respuesta inválida"}), 400
+    conn = get_connection()
+    try:
+        with conn.cursor() as c:
+            id_prof = _id_profesor_por_gmail(c, gmail)
+            if not id_prof:
+                return jsonify({"error": "Profesor no encontrado"}), 404
+            c.execute("""
+                SELECT a.fecha
+                FROM agenda_aviso_docentes d
+                JOIN agenda_avisos a ON a.id = d.id_aviso
+                WHERE d.id_aviso = %s AND d.id_profesor = %s
+            """, (id_aviso, id_prof))
+            fila = c.fetchone()
+            if not fila:
+                return jsonify({"error": "Ese aviso no está disponible"}), 404
+            if fila['fecha'] < date.today():
+                return jsonify({"error": "Esa fecha ya pasó"}), 400
+            c.execute("""
+                UPDATE agenda_aviso_docentes
+                SET asistencia = %s, respondido_en = NOW()
+                WHERE id_aviso = %s AND id_profesor = %s
+            """, (valor, id_aviso, id_prof))
+        conn.commit()
+        return jsonify({"ok": True, "asistencia": valor})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        conn.close()
+
+
 if __name__ == '__main__':
     _init_tablas()
+    _init_agenda()
     print('📁 Uploads:', UPLOAD_BASE)
     app.run(debug=True, port=5000)
